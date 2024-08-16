@@ -20,8 +20,10 @@ enum Direction {
     UpRight,
     Down,
     DownLeft,
-    DownRight
+    DownRight,
+    None
 }
+
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
@@ -37,11 +39,47 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 /// The sprite is animated by changing its translation depending on the time that has passed since
 /// the last frame.
-fn sprite_movement(time: Res<Time>, mut sprite_position: Query<(&mut Direction, &mut Transform)>) {
+fn sprite_movement(time: Res<Time>, mut sprite_position: Query<(&mut Direction, &mut Transform)>, keyboard_input: Res<ButtonInput<KeyCode>>) {
     for (mut logo, mut transform) in &mut sprite_position {
         let delta = 150. * time.delta_seconds();
 
+        if keyboard_input.pressed(KeyCode::ArrowLeft) {
+            if keyboard_input.pressed(KeyCode::ArrowUp) {
+                *logo = Direction::UpLeft;
+            }
+            else if   keyboard_input.pressed(KeyCode::ArrowDown) {
+                *logo = Direction::DownLeft;
+            }
+            else {
+                *logo = Direction::Left;
+            }
+        }
+        else if keyboard_input.pressed(KeyCode::ArrowRight) {
+            if keyboard_input.pressed(KeyCode::ArrowUp) {
+                *logo = Direction::UpRight;
+            }
+            else if   keyboard_input.pressed(KeyCode::ArrowDown) {
+                *logo = Direction::DownRight;
+            }
+            else {
+                *logo = Direction::Right;
+            }
+        }
+        else if keyboard_input.pressed(KeyCode::ArrowDown) {
+            *logo = Direction::Down;
+        }
+        else if keyboard_input.pressed(KeyCode::ArrowUp) {
+            *logo = Direction::Up;
+        }
+        else {
+            *logo = Direction::None;
+        }
+
         match *logo {
+            Direction::None => {
+                transform.translation.y = transform.translation.y;
+                transform.translation.x = transform.translation.x;
+            }
             Direction::Up => transform.translation.y += delta,
             Direction::Down => transform.translation.y -= delta,
             Direction::Left => transform.translation.x -= delta,
@@ -63,43 +101,7 @@ fn sprite_movement(time: Res<Time>, mut sprite_position: Query<(&mut Direction, 
                 transform.translation.x -= delta;
             }
         }
-
-        // Adjust direction based on boundary checks
-        if transform.translation.y > 200. {
-            if *logo == Direction::UpRight {
-                *logo = Direction::DownRight;
-            } else if *logo == Direction::UpLeft {
-                *logo = Direction::DownLeft;
-            } else {
-                *logo = Direction::Down;
-            }
-        } else if transform.translation.y < -200. {
-            if *logo == Direction::DownRight {
-                *logo = Direction::UpRight;
-            } else if *logo == Direction::DownLeft {
-                *logo = Direction::UpLeft;
-            } else {
-                *logo = Direction::Up;
-            }
-        }
-
-        if transform.translation.x > 200. {
-            if *logo == Direction::UpRight {
-                *logo = Direction::UpLeft;
-            } else if *logo == Direction::DownRight {
-                *logo = Direction::DownLeft;
-            } else {
-                *logo = Direction::Left;
-            }
-        } else if transform.translation.x < -200. {
-            if *logo == Direction::UpLeft {
-                *logo = Direction::UpRight;
-            } else if *logo == Direction::DownLeft {
-                *logo = Direction::DownRight;
-            } else {
-                *logo = Direction::Right;
-            }
-        }
     }
 }
+
 
