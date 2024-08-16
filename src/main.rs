@@ -68,6 +68,8 @@ struct CollisionBox {
     width: f32,
     height: f32,
 }
+#[derive(Event)]
+struct CollisionEvent(Entity); // Event carrying the entity to delete
 
 
 //AABB
@@ -98,21 +100,42 @@ impl CollisionBox {
 #[derive(Event)]
 struct Damaged;
 
+fn handle_collisions(
+    mut commands: Commands,
+    mut collision_events: EventReader<CollisionEvent>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut score: ResMut<Score>, // Access the Score resource
+) {
+    collision_events
+        .read() // Use par_read to access events in a parallel-safe manner
+        .for_each(|CollisionEvent(entity)| {
+            if keyboard_input.pressed(KeyCode::KeyE) {
+                commands.entity(*entity).despawn(); // Despawn the entity if the key is pressed
+                enemy_killed(&mut score);
+            }
+            // Example: increment the counter
+        });
+}
+
 fn main() {
     App::new()
         .insert_resource(Score::new()) //add ability to modify score
         .add_plugins(DefaultPlugins)// pulls in default plugin list, ECS, 2d rendering etc
         .add_systems(Startup, setup)// make the initialize() using the setup function
-        .add_systems(FixedUpdate, (sprite_movement, enemy_killed, display_score, check_collisions).chain()) // make the game loop run once a frame
+        .add_systems(FixedUpdate, (sprite_movement, display_score, check_collisions, handle_collisions)) // make the game loop run once a frame
         //FixedUpdate + chain means it runs in succession left to right of stuff in tuple
+        .add_event::<CollisionEvent>()
         .run();
 }
 
 // System to simulate enemy kills
-fn enemy_killed(mut score: ResMut<Score>) {
+fn enemy_killed(score: &mut ResMut<Score>) {
     score.increment();
+    println!("Score: {}", score.get_enemies_killed())
     //kill with EntityCommands::despawn || or Entities.free(entity)
 }
+
+
 
 // System to display the current score commented out because spam uncomment out _in front of _score to fix
 fn display_score(_score: Res<Score>) {
@@ -122,11 +145,13 @@ fn display_score(_score: Res<Score>) {
 //check if player runs into something and takes away health if they are
 fn check_collisions(
     mut player_query: Query<(&Transform, &CollisionBox, &mut Player)>,
-    other_entities_query: Query<(&Transform, &CollisionBox), Without<Player>>,
+    other_entities_query: Query<(Entity, &Transform, &CollisionBox), Without<Player>>,
+    mut collision_events: EventWriter<CollisionEvent>,
 ) {
     for (player_transform, player_collision_box, mut player) in player_query.iter_mut() {
-        for (other_transform, other_collision_box) in other_entities_query.iter() {
+        for (entity, other_transform, other_collision_box) in other_entities_query.iter() {
             if player_collision_box.intersects(player_transform, other_collision_box, other_transform) {
+                collision_events.send(CollisionEvent(entity)); //check for e push and kill
                 player.take_damage(10); // Player takes 10 damage on collision
             }
         }
@@ -134,12 +159,13 @@ fn check_collisions(
 }
 
 
+
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
     //instructions in top left
     commands.spawn(
         TextBundle::from_section(
-            "WASD to Move around",
+            "WASD to Move around, E to kill",
             TextStyle {
                 color: Color::WHITE,
                 ..default()
