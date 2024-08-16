@@ -2,14 +2,6 @@
 
 use bevy::prelude::*;
 
-fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins)// pulls in default plugin list, ECS, 2d rendering etc
-        .add_systems(Startup, setup)// make the initialize() using the setup function
-        .add_systems(Update, sprite_movement) // make the game loop using sprite_movement() function
-        .run();
-}
-
 #[derive(Component)]
 #[derive(PartialEq)]
 enum Direction {
@@ -23,6 +15,48 @@ enum Direction {
     DownRight,
     None
 }
+
+#[derive(Resource)] // Add this line
+struct Score {
+    enemies_killed: u32,
+}
+
+impl Score {
+    fn new() -> Self {
+        Score {
+            enemies_killed: 0,
+        }
+    }
+
+    fn increment(&mut self) {
+        self.enemies_killed += 1;
+    }
+
+    fn get_enemies_killed(&self) -> u32 {
+        self.enemies_killed
+    }
+}
+
+fn main() {
+    App::new()
+        .insert_resource(Score::new())
+        .add_plugins(DefaultPlugins)// pulls in default plugin list, ECS, 2d rendering etc
+        .add_systems(Startup, setup)// make the initialize() using the setup function
+        .add_systems(FixedUpdate, (sprite_movement, enemy_killed, display_score).chain()) // make the game loop using sprite_movement() function
+        .run();
+}
+
+// System to simulate enemy kills
+fn enemy_killed(mut score: ResMut<Score>) {
+    score.increment();
+}
+
+// System to display the current score
+fn display_score(score: Res<Score>) {
+    println!("Enemies killed: {}", score.get_enemies_killed());
+}
+
+
 
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
