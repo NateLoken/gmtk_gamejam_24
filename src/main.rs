@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 #[derive(Component)]
 #[derive(PartialEq)]
+//movement directions
 enum Direction {
     Up,
     UpLeft,
@@ -16,6 +17,7 @@ enum Direction {
     None
 }
 
+//player health
 #[derive(Component)]
 struct Player {
     health: i32,
@@ -32,23 +34,13 @@ impl Player {
     }
 }
 
+//entity identification via str
 #[derive(Component)]
 struct Tag {
     name: String,
 }
 
-#[derive(Component)]
-struct Health {
-    value: i32,
-}
-
-impl Health {
-    fn take_damage(&mut self, amount: i32) {
-        self.value -= amount;
-        println!("Player took {} damage, remaining health: {}", amount, self.value);
-    }
-}
-
+//struct for tracking score via kills
 #[derive(Resource)] // Add this line
 struct Score {
     enemies_killed: u32,
@@ -70,12 +62,15 @@ impl Score {
     }
 }
 
+//collision box logic
 #[derive(Component)]
 struct CollisionBox {
     width: f32,
     height: f32,
 }
 
+
+//AABB
 impl CollisionBox {
     fn new(width: f32, height: f32) -> Self {
         CollisionBox { width, height }
@@ -99,35 +94,32 @@ impl CollisionBox {
     }
 }
 
+//can do some even on taking damage like invulnerability time or something
 #[derive(Event)]
 struct Damaged;
 
 fn main() {
     App::new()
-        .insert_resource(Score::new())
+        .insert_resource(Score::new()) //add ability to modify score
         .add_plugins(DefaultPlugins)// pulls in default plugin list, ECS, 2d rendering etc
         .add_systems(Startup, setup)// make the initialize() using the setup function
-        .add_systems(FixedUpdate, (sprite_movement, enemy_killed, display_score, check_collisions).chain()) // make the game loop using sprite_movement() function
+        .add_systems(FixedUpdate, (sprite_movement, enemy_killed, display_score, check_collisions).chain()) // make the game loop run once a frame
+        //FixedUpdate + chain means it runs in succession left to right of stuff in tuple
         .run();
 }
 
 // System to simulate enemy kills
 fn enemy_killed(mut score: ResMut<Score>) {
     score.increment();
+    //kill with EntityCommands::despawn || or Entities.free(entity)
 }
 
-// System to display the current score
-fn display_score(score: Res<Score>) {
+// System to display the current score commented out because spam uncomment out _in front of _score to fix
+fn display_score(_score: Res<Score>) {
     //println!("Enemies killed: {}", score.get_enemies_killed());
 }
 
-
-//fn entity_pathfind_to_entity(mut )
-
-fn take_damage(trigger: Trigger<Damaged>, query: Query<&CollisionBox>, mut commands: Commands) {
-    return
-}
-
+//check if player runs into something and takes away health if they are
 fn check_collisions(
     mut player_query: Query<(&Transform, &CollisionBox, &mut Player)>,
     other_entities_query: Query<(&Transform, &CollisionBox), Without<Player>>,
@@ -144,9 +136,10 @@ fn check_collisions(
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
+    //instructions in top left
     commands.spawn(
         TextBundle::from_section(
-            "ArrowKeys to Move around",
+            "WASD to Move around",
             TextStyle {
                 color: Color::WHITE,
                 ..default()
@@ -160,26 +153,28 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         }),
     );
 
-    let mut observer = Observer::new(take_damage);
-    let player = commands.spawn((
+    //let mut observer = Observer::new(take_damage);
+    //main player sprite
+    commands.spawn((
         SpriteBundle {
-            texture: asset_server.load("../assets/blue_box.png"),
-            transform: Transform::from_xyz(100., 0., 0.),
+            texture: asset_server.load("../assets/blue_box.png"), //image
+            transform: Transform::from_xyz(100., 0., 0.), //start pos
             ..default()
         },
-        Direction::None,
-    )).insert(CollisionBox::new(50.0, 50.0))
-    .insert(Player::new(500))
-    .id();
+        Direction::None, //initial velocity
+    )).insert(CollisionBox::new(50.0, 50.0)) //attach collision box to entity
+    .insert(Player::new(500));//attach health to entity
 
-    commands
-        // Observers can watch for events targeting a specific entity.
-        // This will create a new observer that runs whenever the Explode event
-        // is triggered for this spawned entity.
-        .observe(take_damage);
+    // commands
+    //     // Observers can watch for events targeting a specific entity.
+    //     // This will create a new observer that runs whenever the Explode event
+    //     // is triggered for this spawned entity.
+    //     .observe(take_damage);
 
-    observer.watch_entity(player);
+    //observer.watch_entity(player);
 
+
+    //"enemy" sprite
     commands.spawn((
         SpriteBundle {
             texture: asset_server.load("../assets/pink_box.png"),
@@ -192,47 +187,49 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         name: "Enemy1".to_string(),
     });
     
-    commands.spawn(observer);
+    //commands.spawn(observer);
 }
 
 /// The sprite is animated by changing its translation depending on the time that has passed since
 /// the last frame.
 fn sprite_movement(time: Res<Time>, mut sprite_position: Query<(&mut Direction, &mut Transform)>, keyboard_input: Res<ButtonInput<KeyCode>>) {
     for (mut logo, mut transform) in &mut sprite_position {
-        let delta = 150. * time.delta_seconds();
+        let delta = 150. * time.delta_seconds(); //movespeed
 
-        if keyboard_input.pressed(KeyCode::ArrowLeft) {
-            if keyboard_input.pressed(KeyCode::ArrowUp) {
+        //6dof movement handling
+        if keyboard_input.pressed(KeyCode::KeyA) {
+            if keyboard_input.pressed(KeyCode::KeyW) {
                 *logo = Direction::UpLeft;
             }
-            else if   keyboard_input.pressed(KeyCode::ArrowDown) {
+            else if   keyboard_input.pressed(KeyCode::KeyS) {
                 *logo = Direction::DownLeft;
             }
             else {
                 *logo = Direction::Left;
             }
         }
-        else if keyboard_input.pressed(KeyCode::ArrowRight) {
-            if keyboard_input.pressed(KeyCode::ArrowUp) {
+        else if keyboard_input.pressed(KeyCode::KeyD) {
+            if keyboard_input.pressed(KeyCode::KeyW) {
                 *logo = Direction::UpRight;
             }
-            else if   keyboard_input.pressed(KeyCode::ArrowDown) {
+            else if   keyboard_input.pressed(KeyCode::KeyS) {
                 *logo = Direction::DownRight;
             }
             else {
                 *logo = Direction::Right;
             }
         }
-        else if keyboard_input.pressed(KeyCode::ArrowDown) {
+        else if keyboard_input.pressed(KeyCode::KeyS) {
             *logo = Direction::Down;
         }
-        else if keyboard_input.pressed(KeyCode::ArrowUp) {
+        else if keyboard_input.pressed(KeyCode::KeyW) {
             *logo = Direction::Up;
         }
         else {
             *logo = Direction::None;
         }
 
+        //applying velocity to image transform
         match *logo {
             Direction::None => {
                 transform.translation.y = transform.translation.y;
