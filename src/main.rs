@@ -16,19 +16,36 @@ enum Direction {
     None
 }
 
-#[derive(Resource)]
-struct EntityIdTracker {
-    current_id: u32,
+#[derive(Component)]
+struct Player {
+    health: i32,
 }
 
-impl EntityIdTracker {
-    fn new() -> Self {
-        EntityIdTracker { current_id: 0 }
+impl Player {
+    fn new(health: i32) -> Self {
+        Player { health }
     }
 
-    fn get_next_id(&mut self) -> u32 {
-        self.current_id += 1;
-        self.current_id
+    fn take_damage(&mut self, amount: i32) {
+        self.health -= amount;
+        println!("Player took {} damage, remaining health: {}", amount, self.health);
+    }
+}
+
+#[derive(Component)]
+struct Tag {
+    name: String,
+}
+
+#[derive(Component)]
+struct Health {
+    value: i32,
+}
+
+impl Health {
+    fn take_damage(&mut self, amount: i32) {
+        self.value -= amount;
+        println!("Player took {} damage, remaining health: {}", amount, self.value);
     }
 }
 
@@ -88,10 +105,9 @@ struct Damaged;
 fn main() {
     App::new()
         .insert_resource(Score::new())
-        .insert_resource(EntityIdTracker::new())
         .add_plugins(DefaultPlugins)// pulls in default plugin list, ECS, 2d rendering etc
         .add_systems(Startup, setup)// make the initialize() using the setup function
-        .add_systems(FixedUpdate, (sprite_movement, enemy_killed, display_score, observe_transform_changes).chain()) // make the game loop using sprite_movement() function
+        .add_systems(FixedUpdate, (sprite_movement, enemy_killed, display_score, check_collisions).chain()) // make the game loop using sprite_movement() function
         .run();
 }
 
@@ -112,29 +128,21 @@ fn take_damage(trigger: Trigger<Damaged>, query: Query<&CollisionBox>, mut comma
     return
 }
 
-fn observe_transform_changes(
-    mut query: Query<(&Transform, &CollisionBox, Entity), Changed<Transform>>,
-    all_entities: Query<(Entity, &Transform, &CollisionBox)>,
+fn check_collisions(
+    mut player_query: Query<(&Transform, &CollisionBox, &mut Player)>,
+    other_entities_query: Query<(&Transform, &CollisionBox), Without<Player>>,
 ) {
-    for (transform_a, collision_box_a, entity_a) in query.iter() {
-        for (entity_b, transform_b, collision_box_b) in all_entities.iter() {
-            if entity_a == entity_b {
-                continue;
-            }
-
-            if collision_box_a.intersects(transform_a, collision_box_b, transform_b) {
-                println!(
-                    "Entity {:?} is colliding with Entity {:?}",
-                    entity_a, entity_b
-                );
+    for (player_transform, player_collision_box, mut player) in player_query.iter_mut() {
+        for (other_transform, other_collision_box) in other_entities_query.iter() {
+            if player_collision_box.intersects(player_transform, other_collision_box, other_transform) {
+                player.take_damage(10); // Player takes 10 damage on collision
             }
         }
     }
 }
 
 
-
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut id_tracker: ResMut<EntityIdTracker>) {
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
     commands.spawn(
         TextBundle::from_section(
@@ -161,6 +169,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut id_tracker:
         },
         Direction::None,
     )).insert(CollisionBox::new(50.0, 50.0))
+    .insert(Player::new(500))
     .id();
 
     commands
@@ -178,7 +187,12 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut id_tracker:
             ..default()
         },
         //chase_player()
-    )).insert(CollisionBox::new(50.0, 50.0));
+    )).insert(CollisionBox::new(50.0, 50.0))
+    .insert(Tag {
+        name: "Enemy1".to_string(),
+    });
+    
+    commands.spawn(observer);
 }
 
 /// The sprite is animated by changing its translation depending on the time that has passed since
@@ -247,5 +261,3 @@ fn sprite_movement(time: Res<Time>, mut sprite_position: Query<(&mut Direction, 
         }
     }
 }
-
-
