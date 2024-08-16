@@ -1,5 +1,5 @@
 [package]
-name = "ic_tl_kb_gamejam"
+name = "gmtk_gamejam"
 version = "0.1.0"
 edition = "2021"
 
@@ -13,3 +13,4 @@ opt-level = 3
 
 [dependencies]
 bevy = { version = "0.14.1", features = ["dynamic_linking"] }
+
