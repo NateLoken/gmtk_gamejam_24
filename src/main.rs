@@ -34,6 +34,17 @@ impl Player {
     }
 }
 
+#[derive(Component)]
+struct Position(Vec2);
+
+#[derive(Component)]
+struct MovementSpeed(f32);
+
+#[derive(Component)]
+struct DirectionComponent {
+    direction: Direction,
+}
+
 //entity identification via str
 #[derive(Component)]
 struct Tag {
@@ -106,15 +117,21 @@ fn handle_collisions(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut score: ResMut<Score>, // Access the Score resource
 ) {
+    let mut entities_to_despawn = Vec::new(); // Collect entities to despawn after the loop
     collision_events
         .read() // Use par_read to access events in a parallel-safe manner
         .for_each(|CollisionEvent(entity)| {
             if keyboard_input.pressed(KeyCode::KeyE) {
-                commands.entity(*entity).despawn(); // Despawn the entity if the key is pressed
+                entities_to_despawn.push(*entity); // Mark the entity for despawning + needs to be this way to avoid segfault
                 enemy_killed(&mut score);
             }
             // Example: increment the counter
         });
+        for entity in entities_to_despawn {
+            if commands.get_entity(entity).is_some() { //make sure it exists
+                commands.entity(entity).despawn(); //despawn all
+            }
+        }
 }
 
 fn main() {
@@ -122,7 +139,7 @@ fn main() {
         .insert_resource(Score::new()) //add ability to modify score
         .add_plugins(DefaultPlugins)// pulls in default plugin list, ECS, 2d rendering etc
         .add_systems(Startup, setup)// make the initialize() using the setup function
-        .add_systems(FixedUpdate, (sprite_movement, display_score, check_collisions, handle_collisions)) // make the game loop run once a frame
+        .add_systems(FixedUpdate, (sprite_movement, pathfind_towards_player, move_entities, display_score, check_collisions, handle_collisions)) // make the game loop run once a frame
         //FixedUpdate + chain means it runs in succession left to right of stuff in tuple
         .add_event::<CollisionEvent>()
         .run();
@@ -211,9 +228,78 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     )).insert(CollisionBox::new(50.0, 50.0))
     .insert(Tag {
         name: "Enemy1".to_string(),
-    });
+    })
+    .insert(Position(Vec2::new(300.0, 300.0))) // Spawned at some position
+    .insert(MovementSpeed(50.0))
+    .insert(DirectionComponent { direction: Direction::None });;
     
     //commands.spawn(observer);
+}
+
+fn pathfind_towards_player(
+    player_query: Query<&Transform, With<Player>>, // Get the player's transform
+    mut enemy_query: Query<(&mut DirectionComponent, &Transform), Without<Player>>,
+) {
+    if let Ok(player_transform) = player_query.get_single() {
+        for (mut direction_component, enemy_transform) in enemy_query.iter_mut() {
+            let direction_vector = (player_transform.translation - enemy_transform.translation).normalize();
+
+            // Determine the direction based on the relative position to the player
+            direction_component.direction = if direction_vector.x > 0.0 && direction_vector.y > 0.0 {
+                Direction::UpRight
+            } else if direction_vector.x < 0.0 && direction_vector.y > 0.0 {
+                Direction::UpLeft
+            } else if direction_vector.x > 0.0 && direction_vector.y < 0.0 {
+                Direction::DownRight
+            } else if direction_vector.x < 0.0 && direction_vector.y < 0.0 {
+                Direction::DownLeft
+            } else if direction_vector.x > 0.0 {
+                Direction::Right
+            } else if direction_vector.x < 0.0 {
+                Direction::Left
+            } else if direction_vector.y > 0.0 {
+                Direction::Up
+            } else if direction_vector.y < 0.0 {
+                Direction::Down
+            } else {
+                Direction::None
+            };
+        }
+    }
+}
+
+fn move_entities(
+    time: Res<Time>,
+    mut query: Query<(&DirectionComponent, &mut Transform, &MovementSpeed)>,
+) {
+    for (direction_component, mut transform, speed) in query.iter_mut() {
+        let delta = speed.0 * time.delta_seconds(); // Calculate movement delta based on speed and time
+
+        // Apply velocity to the transform based on the direction
+        match direction_component.direction {
+            Direction::None => {}, // No movement if the direction is None
+            Direction::Up => transform.translation.y += delta,
+            Direction::Down => transform.translation.y -= delta,
+            Direction::Left => transform.translation.x -= delta,
+            Direction::Right => transform.translation.x += delta,
+            Direction::UpRight => {
+                transform.translation.y += delta;
+                transform.translation.x += delta;
+            }
+            Direction::UpLeft => {
+                transform.translation.y += delta;
+                transform.translation.x -= delta;
+            }
+            Direction::DownRight => {
+                transform.translation.y -= delta;
+                transform.translation.x += delta;
+            }
+            Direction::DownLeft => {
+                transform.translation.y -= delta;
+                transform.translation.x -= delta;
+            }
+        }
+    }
 }
 
 /// The sprite is animated by changing its translation depending on the time that has passed since
