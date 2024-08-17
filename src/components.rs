@@ -40,7 +40,7 @@ impl Player {
     ) {
         if let Some(invulnerability) = invulnerability_option {
             if invulnerability.is_active() {
-                println!("Player is invulnerable, no damage taken.");
+                //println!("Player is invulnerable, no damage taken.");
                 return;
             } else {
                 invulnerability.reset(); // Reset the timer if it's not active
@@ -49,7 +49,7 @@ impl Player {
         } else {
             // If no invulnerability component, add it with the desired duration
             commands.entity(entity).insert(Invulnerability::new(invulnerability_duration));
-            println!("Invulnerability added with duration: {} seconds.", invulnerability_duration);
+           // println!("Invulnerability added with duration: {} seconds.", invulnerability_duration);
         }
 
         // Apply damage to the player

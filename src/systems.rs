@@ -697,12 +697,9 @@ pub fn update_cooldowns_ui(
     mut cooldowns_query: Query<&mut Cooldowns>,
     mut text_query: Query<&mut Text, With<CooldownUi>>,
 ) {
-    println!("Running update_cooldowns_ui...");
-
     if let Ok(mut cooldowns) = cooldowns_query.get_single_mut() {
         // Update the UI text for each ability
         for (i, mut text) in text_query.iter_mut().enumerate() {
-            println!("Found text component to update.");
             let ability_text = match i {
                 0 => format!("Attack: {:.1}s", cooldowns.get_cooldown(Ability::Attack).unwrap_or(0.0)),
                 1 => format!("Ranged: {:.1}s", cooldowns.get_cooldown(Ability::Ranged).unwrap_or(0.0)),
