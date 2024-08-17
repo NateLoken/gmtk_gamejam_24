@@ -30,7 +30,29 @@ impl Player {
         Player { health, x: 0., y: 0. }
     }
 
-    pub fn take_damage(&mut self, amount: i32) {
+    pub fn take_damage(
+        &mut self,
+        amount: i32,
+        entity: Entity,
+        commands: &mut Commands,
+        invulnerability_option: Option<&mut Invulnerability>,
+        invulnerability_duration: f32,
+    ) {
+        if let Some(invulnerability) = invulnerability_option {
+            if invulnerability.is_active() {
+                println!("Player is invulnerable, no damage taken.");
+                return;
+            } else {
+                invulnerability.reset(); // Reset the timer if it's not active
+                println!("Invulnerability reset.");
+            }
+        } else {
+            // If no invulnerability component, add it with the desired duration
+            commands.entity(entity).insert(Invulnerability::new(invulnerability_duration));
+            println!("Invulnerability added with duration: {} seconds.", invulnerability_duration);
+        }
+
+        // Apply damage to the player
         self.health -= amount;
         println!("Player took {} damage, remaining health: {}", amount, self.health);
     }
@@ -153,6 +175,21 @@ pub struct Invulnerability {
     pub timer: Timer,
 }
 
+impl Invulnerability {
+    pub fn new(duration: f32) -> Self {
+        Invulnerability {
+            timer: Timer::from_seconds(duration, TimerMode::Once),
+        }
+    }
+
+    pub fn is_active(&self) -> bool {
+        !self.timer.finished()
+    }
+
+    pub fn reset(&mut self) {
+        self.timer.reset();
+    }
+}
 
 
 #[derive(Component)]

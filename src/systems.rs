@@ -137,8 +137,7 @@ pub fn display_score(_score: Res<Score>) {
 }
 
 pub fn check_collisions(
-    mut player_query: Query<(&mut Player, &CollisionBox, &Transform), Without<Invulnerability>>,
-    other_entities_query: Query<(Entity, &Transform, &CollisionBox), Without<Player>>,
+    mut player_query: Query<(Entity, &mut Player, &CollisionBox, &Transform, Option<Mut< Invulnerability>>)>,    other_entities_query: Query<(Entity, &Transform, &CollisionBox), Without<Player>>,
     mut collision_events: EventWriter<CollisionEvent>,
     points_query: Query<(Entity, &Transform), With<PointMarker>>,
     mut score: ResMut<Score>,
@@ -200,7 +199,7 @@ pub fn check_collisions(
             }
         }
     }
-    for (mut player, player_box, player_transform) in player_query.iter_mut() {
+    for (entity, mut player, player_box, player_transform, mut invulnerability_option) in player_query.iter_mut() {
         for (enemy_entity, enemy_transform, enemy_box) in other_entities_query.iter() {
             let enemy_min_x = enemy_transform.translation.x - enemy_box.width / 2.0;
             let enemy_max_x = enemy_transform.translation.x + enemy_box.width / 2.0;
@@ -218,7 +217,7 @@ pub fn check_collisions(
                 && player_min_y < enemy_max_y
             {
                 // Handle collision, but only if player is not invulnerable
-                player.take_damage(10);
+                player.take_damage(100, entity, &mut commands, invulnerability_option.as_deref_mut(), 0.3);
             }
         }
     }
@@ -566,31 +565,14 @@ pub fn manage_invulnerability(
 ) {
     for (entity, mut invulnerability) in query.iter_mut() {
         invulnerability.timer.tick(time.delta());
+        println!(
+            "Invulnerability timer ticking for entity {:?}, remaining: {:.2}",
+            entity,
+            invulnerability.timer.remaining_secs()
+        );
         if invulnerability.timer.finished() {
-            commands.entity(entity).remove::<Invulnerability>();
-        }
-    }
-}
-
-
-pub fn update_cooldowns_ui(
-    time: Res<Time>,
-    mut cooldowns_query: Query<&mut Cooldowns>,
-    mut text_query: Query<&mut Text, With<CooldownUi>>,
-) {
-
-    if let Ok(mut cooldowns) = cooldowns_query.get_single_mut() {
-        // Update the UI text for each ability
-
-        for (i, mut text) in text_query.iter_mut().enumerate() {
-            let ability_text = match i {
-                0 => format!("Attack: {:.1}s", cooldowns.get_cooldown(Ability::Attack).unwrap_or(0.0)),
-                1 => format!("Ranged: {:.1}s", cooldowns.get_cooldown(Ability::Ranged).unwrap_or(0.0)),
-                2 => format!("Dash: {:.1}s", cooldowns.get_cooldown(Ability::Dash).unwrap_or(0.0)),
-                3 => format!("Aoe: {:.1}s", cooldowns.get_cooldown(Ability::Aoe).unwrap_or(0.0)),
-                _ => "Unknown Ability".to_string(),
-            };
-            text.sections[0].value = ability_text; // Update the UI text with the cooldown value
+            println!("Invulnerability expired for entity {:?}", entity);
+            commands.entity(entity).remove::<Invulnerability>(); // Remove the component when the timer is done
         }
     }
 }
@@ -710,6 +692,29 @@ pub fn update_lifetime(
     }
 }
 
+pub fn update_cooldowns_ui(
+    time: Res<Time>,
+    mut cooldowns_query: Query<&mut Cooldowns>,
+    mut text_query: Query<&mut Text, With<CooldownUi>>,
+) {
+    println!("Running update_cooldowns_ui...");
+
+    if let Ok(mut cooldowns) = cooldowns_query.get_single_mut() {
+        // Update the UI text for each ability
+        for (i, mut text) in text_query.iter_mut().enumerate() {
+            println!("Found text component to update.");
+            let ability_text = match i {
+                0 => format!("Attack: {:.1}s", cooldowns.get_cooldown(Ability::Attack).unwrap_or(0.0)),
+                1 => format!("Ranged: {:.1}s", cooldowns.get_cooldown(Ability::Ranged).unwrap_or(0.0)),
+                2 => format!("Dash: {:.1}s", cooldowns.get_cooldown(Ability::Dash).unwrap_or(0.0)),
+                3 => format!("Aoe: {:.1}s", cooldowns.get_cooldown(Ability::Aoe).unwrap_or(0.0)),
+                _ => "Unknown Ability".to_string(),
+            };
+
+            text.sections[0].value = ability_text;
+        }
+    }
+}
 
 pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
@@ -795,7 +800,8 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     ))
     .insert(CollisionBox::new(50.0, 50.0))
     .insert(Player::new(500))
-    .insert(Cooldowns::new());  // Initialize cooldowns for abilities)
+    .insert(Cooldowns::new()); // Initialize cooldowns for abilities)
+    //.insert(Invulnerability::new(0.3));
 
     commands.insert_resource(EnemySpawnTimer::new(10, 750.)); 
 }
