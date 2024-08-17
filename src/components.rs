@@ -75,6 +75,46 @@ impl EnemySpawnTimer {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Ability {
+    Dash,
+    Attack,
+    Ranged,
+    Aoe,
+}
+
+use std::collections::HashMap;
+
+#[derive(Component)]
+pub struct Cooldowns {
+    pub cooldowns: HashMap<Ability, Timer>,
+}
+
+impl Cooldowns {
+    pub fn new() -> Self {
+        let mut cooldowns = HashMap::new();
+        cooldowns.insert(Ability::Dash, Timer::from_seconds(5.0, TimerMode::Once)); // 5 second cooldown
+        cooldowns.insert(Ability::Ranged, Timer::from_seconds(3.0, TimerMode::Once));
+        cooldowns.insert(Ability::Attack, Timer::from_seconds(1.0, TimerMode::Once));    // 3 second cooldown
+        cooldowns.insert(Ability::Aoe, Timer::from_seconds(10.0, TimerMode::Once)); // 10 second cooldown
+        Self { cooldowns }
+    }
+
+    pub fn is_ready(&self, ability: Ability) -> bool {
+        if let Some(timer) = self.cooldowns.get(&ability) {
+            timer.finished()
+        } else {
+            false
+        }
+    }
+
+    pub fn reset(&mut self, ability: Ability) {
+        if let Some(timer) = self.cooldowns.get_mut(&ability) {
+            timer.reset();
+        }
+    }
+}
+
 #[derive(Component)]
 pub struct MovementSpeed(pub f32);
 
