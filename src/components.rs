@@ -29,6 +29,25 @@ impl Player {
     }
 }
 
+// Add the EnemySpawnTimer struct
+#[derive(Component)]
+#[derive(Resource)]
+pub struct EnemySpawnTimer {
+    pub timer: Timer,
+    pub enemies_spawned: usize,
+    pub total_enemies: usize,
+}
+
+impl EnemySpawnTimer {
+    pub fn new(total_enemies: usize) -> Self {
+        EnemySpawnTimer {
+            timer: Timer::from_seconds(1.0, TimerMode::Repeating),
+            enemies_spawned: 0,
+            total_enemies,
+        }
+    }
+}
+
 #[derive(Component)]
 pub struct MovementSpeed(pub f32);
 

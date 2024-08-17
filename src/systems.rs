@@ -1,8 +1,44 @@
 use bevy::prelude::*;
-use crate::components::{Direction, DirectionComponent, MovementSpeed, CollisionBox, Player, Tag};
+use crate::components::{Direction, DirectionComponent, MovementSpeed, CollisionBox, Player, Tag, EnemySpawnTimer};
 use crate::events::{CollisionEvent, Score};
+use rand::Rng;
 
 // Systems Implementation
+
+pub fn spawn_enemies_over_time(
+    mut commands: Commands,
+    time: Res<Time>,
+    asset_server: Res<AssetServer>,
+    mut spawn_timer: ResMut<EnemySpawnTimer>,
+) {
+    // Update the timer
+    spawn_timer.timer.tick(time.delta());
+
+    // If the timer has finished and we haven't spawned all enemies
+    if spawn_timer.timer.finished() && spawn_timer.enemies_spawned < spawn_timer.total_enemies {
+        // Generate random x and y positions
+        let mut rng = rand::thread_rng();
+        let x = rng.gen_range(-500.0..500.0);
+        let y = rng.gen_range(-500.0..500.0);
+
+        // Spawn the enemy entity
+        commands.spawn((
+            SpriteBundle {
+                texture: asset_server.load("../assets/pink_box.png"), // Enemy texture
+                transform: Transform::from_xyz(x, y, 0.0), // Set random position
+                ..Default::default()
+            },
+        ))
+        .insert(CollisionBox::new(50.0, 50.0)) // Add collision box
+        .insert(Tag { name: format!("Enemy{}", spawn_timer.enemies_spawned) }) // Tag with a unique name
+        .insert(MovementSpeed(50.0)) // Set movement speed
+        .insert(DirectionComponent { direction: Direction::None }); // Set initial direction
+
+        // Increment the count of spawned enemies
+        spawn_timer.enemies_spawned += 1;
+    }
+}
+
 
 pub fn handle_collisions(
     mut commands: Commands,
@@ -211,17 +247,5 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     .insert(CollisionBox::new(50.0, 50.0))
     .insert(Player::new(500));
 
-    commands.spawn((
-        SpriteBundle {
-            texture: asset_server.load("../assets/pink_box.png"),
-            transform: Transform::from_xyz(250., 250., 0.),
-            ..default()
-        },
-    ))
-    .insert(CollisionBox::new(50.0, 50.0))
-    .insert(Tag {
-        name: "Enemy1".to_string(),
-    })
-    .insert(MovementSpeed(50.0))
-    .insert(DirectionComponent { direction: Direction::None });
+    commands.insert_resource(EnemySpawnTimer::new(10)); 
 }

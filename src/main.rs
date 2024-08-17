@@ -21,6 +21,7 @@ fn main() {
                 display_score,
                 check_collisions,
                 handle_collisions,
+                spawn_enemies_over_time
             ),
         )
         .add_event::<CollisionEvent>()
