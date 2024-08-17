@@ -29,9 +29,9 @@ fn main() {
                 update_player_position,
                 update_lifetime,
                 update_cooldowns, 
+                use_ability.before(update_cooldowns_ui),
                 update_cooldowns_ui,
-                use_ability, 
-                manage_invulnerability
+                manage_invulnerability,
             ),
         )
         .add_event::<CollisionEvent>()

@@ -572,22 +572,25 @@ pub fn manage_invulnerability(
     }
 }
 
+
 pub fn update_cooldowns_ui(
-    mut enemy_query: Query<(&mut DirectionComponent, &Transform), Without<Player>>,
+    time: Res<Time>,
     mut cooldowns_query: Query<&mut Cooldowns>,
     mut text_query: Query<&mut Text, With<CooldownUi>>,
 ) {
-    for mut cooldowns in cooldowns_query.iter_mut() {
+
+    if let Ok(mut cooldowns) = cooldowns_query.get_single_mut() {
+        // Update the UI text for each ability
+
         for (i, mut text) in text_query.iter_mut().enumerate() {
             let ability_text = match i {
                 0 => format!("Attack: {:.1}s", cooldowns.get_cooldown(Ability::Attack).unwrap_or(0.0)),
                 1 => format!("Ranged: {:.1}s", cooldowns.get_cooldown(Ability::Ranged).unwrap_or(0.0)),
                 2 => format!("Dash: {:.1}s", cooldowns.get_cooldown(Ability::Dash).unwrap_or(0.0)),
                 3 => format!("Aoe: {:.1}s", cooldowns.get_cooldown(Ability::Aoe).unwrap_or(0.0)),
-                _ => "Unknown".to_string(),
+                _ => "Unknown Ability".to_string(),
             };
-
-            text.sections[0].value = ability_text;
+            text.sections[0].value = ability_text; // Update the UI text with the cooldown value
         }
     }
 }
@@ -748,9 +751,9 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
         for ability in abilities.iter() {
             let ability_name = match ability {
-                Ability::Dash => "Dash",
-                Ability::Ranged => "Ranged",
                 Ability::Attack => "Attack",
+                Ability::Ranged => "Ranged",
+                Ability::Dash => "Dash",
                 Ability::Aoe => "Bladestorm",
             };
 
@@ -777,7 +780,8 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         },
                     ), // Remove the extra argument
                     ..Default::default()
-                });
+                })
+                .insert(CooldownUi);
             });
         }
     });
