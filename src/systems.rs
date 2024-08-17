@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use crate::components::{Direction, DirectionComponent, MovementSpeed, CollisionBox, Player, Tag, EnemySpawnTimer};
 use crate::events::{CollisionEvent, Score};
+use crate::{GameTextures, ENEMY_SPRITE, PLAYER_SPRITE, SPRITE_SIZE, SPRITE_SCALE};
 use rand::Rng;
 use std::f32::consts::PI;
 
@@ -9,7 +10,7 @@ use std::f32::consts::PI;
 pub fn spawn_enemies_over_time(
     mut commands: Commands,
     time: Res<Time>,
-    asset_server: Res<AssetServer>,
+    game_textures: Res<GameTextures>,
     player_query: Query<&Transform, With<Player>>, // Query to get the player's Transform
     mut spawn_timer: ResMut<EnemySpawnTimer>,
 ) {
@@ -31,16 +32,21 @@ pub fn spawn_enemies_over_time(
 
             // Spawn the enemy entity at the calculated position
             commands.spawn((
-                SpriteBundle {
-                    texture: asset_server.load("../assets/pink_box.png"), // Enemy texture
-                    transform: Transform::from_xyz(x, y, 0.0),           // Set position
-                    ..Default::default()
-                },
+                    SpriteBundle {
+                        texture: game_textures.enemy.clone(), 
+                        transform: Transform { 
+                            translation: Vec3::new(0., SPRITE_SIZE.1 / 2. + 5., 10.),
+                            scale: Vec3::new(SPRITE_SCALE, SPRITE_SCALE, 0.),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+
+                    },
             ))
-            .insert(CollisionBox::new(50.0, 50.0)) // Add collision box
-            .insert(Tag { name: format!("Enemy{}", spawn_timer.enemies_spawned) }) // Tag with a unique name
-            .insert(MovementSpeed(50.0)) // Set movement speed
-            .insert(DirectionComponent { direction: Direction::None }); // Set initial direction
+                .insert(CollisionBox::new(50.0, 50.0)) // Add collision box
+                .insert(Tag { name: format!("Enemy{}", spawn_timer.enemies_spawned) }) // Tag with a unique name
+                .insert(MovementSpeed(50.0)) // Set movement speed
+                .insert(DirectionComponent { direction: Direction::None }); // Set initial direction
 
             // Increment the count of spawned enemies
             spawn_timer.enemies_spawned += 1;
@@ -294,16 +300,12 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         }),
     );
 
-    commands.spawn((
-        SpriteBundle {
-            texture: asset_server.load("../assets/blue_box.png"),
-            transform: Transform::from_xyz(100., 0., 0.),
-            ..default()
-        },
-        Direction::None,
-    ))
-    .insert(CollisionBox::new(50.0, 50.0))
-    .insert(Player::new(500));
+    let game_textures = GameTextures {
+        player: asset_server.load(PLAYER_SPRITE),
+        enemy: asset_server.load(ENEMY_SPRITE),
+    };
+
+    commands.insert_resource(game_textures);
 
     commands.insert_resource(EnemySpawnTimer::new(10, 750.)); 
 }
