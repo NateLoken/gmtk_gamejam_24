@@ -36,14 +36,16 @@ pub struct EnemySpawnTimer {
     pub timer: Timer,
     pub enemies_spawned: usize,
     pub total_enemies: usize,
+    pub spawn_radius: f32,
 }
 
 impl EnemySpawnTimer {
-    pub fn new(total_enemies: usize) -> Self {
+    pub fn new(total_enemies: usize, spawn_radius: f32) -> Self {
         EnemySpawnTimer {
             timer: Timer::from_seconds(1.0, TimerMode::Repeating),
             enemies_spawned: 0,
             total_enemies,
+            spawn_radius,
         }
     }
 }

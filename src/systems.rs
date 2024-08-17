@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use crate::components::{Direction, DirectionComponent, MovementSpeed, CollisionBox, Player, Tag, EnemySpawnTimer};
 use crate::events::{CollisionEvent, Score};
 use rand::Rng;
+use std::f32::consts::PI;
 
 // Systems Implementation
 
@@ -9,6 +10,7 @@ pub fn spawn_enemies_over_time(
     mut commands: Commands,
     time: Res<Time>,
     asset_server: Res<AssetServer>,
+    player_query: Query<&Transform, With<Player>>, // Query to get the player's Transform
     mut spawn_timer: ResMut<EnemySpawnTimer>,
 ) {
     // Update the timer
@@ -16,26 +18,82 @@ pub fn spawn_enemies_over_time(
 
     // If the timer has finished and we haven't spawned all enemies
     if spawn_timer.timer.finished() && spawn_timer.enemies_spawned < spawn_timer.total_enemies {
-        // Generate random x and y positions
-        let mut rng = rand::thread_rng();
-        let x = rng.gen_range(-500.0..500.0);
-        let y = rng.gen_range(-500.0..500.0);
+        if let Ok(player_transform) = player_query.get_single() {
+            let player_position = player_transform.translation;
 
-        // Spawn the enemy entity
-        commands.spawn((
-            SpriteBundle {
-                texture: asset_server.load("../assets/pink_box.png"), // Enemy texture
-                transform: Transform::from_xyz(x, y, 0.0), // Set random position
-                ..Default::default()
-            },
-        ))
-        .insert(CollisionBox::new(50.0, 50.0)) // Add collision box
-        .insert(Tag { name: format!("Enemy{}", spawn_timer.enemies_spawned) }) // Tag with a unique name
-        .insert(MovementSpeed(50.0)) // Set movement speed
-        .insert(DirectionComponent { direction: Direction::None }); // Set initial direction
+            // Generate a random angle between 0 and 2π radians (full circle)
+            let mut rng = rand::thread_rng();
+            let angle = rng.gen_range(0.0..(2.0 * PI));
 
-        // Increment the count of spawned enemies
-        spawn_timer.enemies_spawned += 1;
+            // Calculate the x and y position based on the angle and radius
+            let x = player_position.x + spawn_timer.spawn_radius * angle.cos();
+            let y = player_position.y + spawn_timer.spawn_radius * angle.sin();
+
+            // Spawn the enemy entity at the calculated position
+            commands.spawn((
+                SpriteBundle {
+                    texture: asset_server.load("../assets/pink_box.png"), // Enemy texture
+                    transform: Transform::from_xyz(x, y, 0.0),           // Set position
+                    ..Default::default()
+                },
+            ))
+            .insert(CollisionBox::new(50.0, 50.0)) // Add collision box
+            .insert(Tag { name: format!("Enemy{}", spawn_timer.enemies_spawned) }) // Tag with a unique name
+            .insert(MovementSpeed(50.0)) // Set movement speed
+            .insert(DirectionComponent { direction: Direction::None }); // Set initial direction
+
+            // Increment the count of spawned enemies
+            spawn_timer.enemies_spawned += 1;
+        }
+    }
+}
+
+pub fn camera_follow_player(
+    mut param_set: ParamSet<(
+        Query<&Transform, With<Player>>,             // Query to get the player's position
+        Query<&mut Transform, With<Camera2d>>,       // Query to get the camera's Transform
+    )>,
+    window_query: Query<&Window>,                    // Query to get the window
+) {
+    // First, get the player's Transform
+    let player_position = {
+        if let Ok(player_transform) = param_set.p0().get_single() {
+            Some(player_transform.translation)
+        } else {
+            None
+        }
+    };
+
+    // If we have the player's position, continue
+    if let Some(player_position) = player_position {
+        // Then, get the window dimensions
+        if let Ok(window) = window_query.get_single() {
+            // Now we can safely get the camera's Transform
+            if let Ok(mut camera_transform) = param_set.p1().get_single_mut() {
+                let half_width = window.width() / 2.0;
+                let half_height = window.height() / 2.0;
+
+                // Calculate world bounds, ensuring min < max
+                let min_x = -500.0 + half_width;
+                let max_x = 500.0 - half_width;
+                let min_y = -500.0 + half_height;
+                let max_y = 500.0 - half_height;
+
+                // Ensure bounds are valid (min should be less than max)
+                if min_x < max_x && min_y < max_y {
+                    // Calculate camera position with clamping
+                    let camera_x = player_position.x.clamp(min_x, max_x);
+                    let camera_y = player_position.y.clamp(min_y, max_y);
+
+                    camera_transform.translation.x = camera_x;
+                    camera_transform.translation.y = camera_y;
+                } else {
+                    // Handle the edge case where bounds are not valid (e.g., world is smaller than window)
+                    camera_transform.translation.x = player_position.x;
+                    camera_transform.translation.y = player_position.y;
+                }
+            }
+        }
     }
 }
 
@@ -247,5 +305,5 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     .insert(CollisionBox::new(50.0, 50.0))
     .insert(Player::new(500));
 
-    commands.insert_resource(EnemySpawnTimer::new(10)); 
+    commands.insert_resource(EnemySpawnTimer::new(10, 750.)); 
 }

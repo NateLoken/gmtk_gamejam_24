@@ -21,7 +21,8 @@ fn main() {
                 display_score,
                 check_collisions,
                 handle_collisions,
-                spawn_enemies_over_time
+                spawn_enemies_over_time,
+                camera_follow_player
             ),
         )
         .add_event::<CollisionEvent>()
