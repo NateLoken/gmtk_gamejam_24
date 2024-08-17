@@ -1,58 +1,8 @@
 use bevy::prelude::*;
-use crate::components::{Direction, DirectionComponent, MovementSpeed, CollisionBox, Player, Tag, EnemySpawnTimer};
+use crate::components::{ CollisionBox, Player,};
 use crate::events::{CollisionEvent, Score};
-use crate::{GameTextures, ENEMY_SPRITE, PLAYER_SPRITE, SPRITE_SIZE, SPRITE_SCALE};
-use rand::Rng;
-use std::f32::consts::PI;
-
+use crate::{EnemyCount, GameTextures, ENEMY_SPRITE, PLAYER_SPRITE};
 // Systems Implementation
-
-pub fn spawn_enemies_over_time(
-    mut commands: Commands,
-    time: Res<Time>,
-    game_textures: Res<GameTextures>,
-    player_query: Query<&Transform, With<Player>>, // Query to get the player's Transform
-    mut spawn_timer: ResMut<EnemySpawnTimer>,
-) {
-    // Update the timer
-    spawn_timer.timer.tick(time.delta());
-
-    // If the timer has finished and we haven't spawned all enemies
-    if spawn_timer.timer.finished() && spawn_timer.enemies_spawned < spawn_timer.total_enemies {
-        if let Ok(player_transform) = player_query.get_single() {
-            let player_position = player_transform.translation;
-
-            // Generate a random angle between 0 and 2π radians (full circle)
-            let mut rng = rand::thread_rng();
-            let angle = rng.gen_range(0.0..(2.0 * PI));
-
-            // Calculate the x and y position based on the angle and radius
-            let x = player_position.x + spawn_timer.spawn_radius * angle.cos();
-            let y = player_position.y + spawn_timer.spawn_radius * angle.sin();
-
-            // Spawn the enemy entity at the calculated position
-            commands.spawn((
-                    SpriteBundle {
-                        texture: game_textures.enemy.clone(), 
-                        transform: Transform { 
-                            translation: Vec3::new(0., SPRITE_SIZE.1 / 2. + 5., 10.),
-                            scale: Vec3::new(SPRITE_SCALE, SPRITE_SCALE, 0.),
-                            ..Default::default()
-                        },
-                        ..Default::default()
-
-                    },
-            ))
-                .insert(CollisionBox::new(50.0, 50.0)) // Add collision box
-                .insert(Tag { name: format!("Enemy{}", spawn_timer.enemies_spawned) }) // Tag with a unique name
-                .insert(MovementSpeed(50.0)) // Set movement speed
-                .insert(DirectionComponent { direction: Direction::None }); // Set initial direction
-
-            // Increment the count of spawned enemies
-            spawn_timer.enemies_spawned += 1;
-        }
-    }
-}
 
 pub fn camera_follow_player(
     mut param_set: ParamSet<(
@@ -120,11 +70,11 @@ pub fn handle_collisions(
             }
             // Example: increment the counter
         });
-        for entity in entities_to_despawn {
-            if commands.get_entity(entity).is_some() { //make sure it exists
-                commands.entity(entity).despawn(); //despawn all
-            }
+    for entity in entities_to_despawn {
+        if commands.get_entity(entity).is_some() { //make sure it exists
+            commands.entity(entity).despawn(); //despawn all
         }
+    }
 }
 
 pub fn enemy_killed(score: &mut ResMut<Score>) {
@@ -146,137 +96,6 @@ pub fn check_collisions(
             if player_collision_box.intersects(player_transform, other_collision_box, other_transform) {
                 collision_events.send(CollisionEvent(entity));
                 player.take_damage(10);
-            }
-        }
-    }
-}
-
-pub fn pathfind_towards_player(
-    player_query: Query<&Transform, With<Player>>, // Get the player's transform
-    mut enemy_query: Query<(&mut DirectionComponent, &Transform), Without<Player>>,
-) {
-    if let Ok(player_transform) = player_query.get_single() {
-        for (mut direction_component, enemy_transform) in enemy_query.iter_mut() {
-            let direction_vector = (player_transform.translation - enemy_transform.translation).normalize();
-
-            direction_component.direction = if direction_vector.x > 0.0 && direction_vector.y > 0.0 {
-                Direction::UpRight
-            } else if direction_vector.x < 0.0 && direction_vector.y > 0.0 {
-                Direction::UpLeft
-            } else if direction_vector.x > 0.0 && direction_vector.y < 0.0 {
-                Direction::DownRight
-            } else if direction_vector.x < 0.0 && direction_vector.y < 0.0 {
-                Direction::DownLeft
-            } else if direction_vector.x > 0.0 {
-                Direction::Right
-            } else if direction_vector.x < 0.0 {
-                Direction::Left
-            } else if direction_vector.y > 0.0 {
-                Direction::Up
-            } else if direction_vector.y < 0.0 {
-                Direction::Down
-            } else {
-                Direction::None
-            };
-        }
-    }
-}
-
-pub fn move_entities(
-    time: Res<Time>,
-    mut query: Query<(&DirectionComponent, &mut Transform, &MovementSpeed)>,
-) {
-    for (direction_component, mut transform, speed) in query.iter_mut() {
-        let delta = speed.0 * time.delta_seconds();
-
-        match direction_component.direction {
-            Direction::None => {},
-            Direction::Up => transform.translation.y += delta,
-            Direction::Down => transform.translation.y -= delta,
-            Direction::Left => transform.translation.x -= delta,
-            Direction::Right => transform.translation.x += delta,
-            Direction::UpRight => {
-                transform.translation.y += delta;
-                transform.translation.x += delta;
-            }
-            Direction::UpLeft => {
-                transform.translation.y += delta;
-                transform.translation.x -= delta;
-            }
-            Direction::DownRight => {
-                transform.translation.y -= delta;
-                transform.translation.x += delta;
-            }
-            Direction::DownLeft => {
-                transform.translation.y -= delta;
-                transform.translation.x -= delta;
-            }
-        }
-    }
-}
-
-pub fn sprite_movement(time: Res<Time>, mut sprite_position: Query<(&mut Direction, &mut Transform)>, keyboard_input: Res<ButtonInput<KeyCode>>) {
-    for (mut logo, mut transform) in &mut sprite_position {
-        let delta = 150. * time.delta_seconds(); //movespeed
-
-        //6dof movement handling
-        if keyboard_input.pressed(KeyCode::KeyA) {
-            if keyboard_input.pressed(KeyCode::KeyW) {
-                *logo = Direction::UpLeft;
-            }
-            else if   keyboard_input.pressed(KeyCode::KeyS) {
-                *logo = Direction::DownLeft;
-            }
-            else {
-                *logo = Direction::Left;
-            }
-        }
-        else if keyboard_input.pressed(KeyCode::KeyD) {
-            if keyboard_input.pressed(KeyCode::KeyW) {
-                *logo = Direction::UpRight;
-            }
-            else if   keyboard_input.pressed(KeyCode::KeyS) {
-                *logo = Direction::DownRight;
-            }
-            else {
-                *logo = Direction::Right;
-            }
-        }
-        else if keyboard_input.pressed(KeyCode::KeyS) {
-            *logo = Direction::Down;
-        }
-        else if keyboard_input.pressed(KeyCode::KeyW) {
-            *logo = Direction::Up;
-        }
-        else {
-            *logo = Direction::None;
-        }
-
-        //applying velocity to image transform
-        match *logo {
-            Direction::None => {
-                transform.translation.y = transform.translation.y;
-                transform.translation.x = transform.translation.x;
-            }
-            Direction::Up => transform.translation.y += delta,
-            Direction::Down => transform.translation.y -= delta,
-            Direction::Left => transform.translation.x -= delta,
-            Direction::Right => transform.translation.x += delta,
-            Direction::UpRight => {
-                transform.translation.y += delta;
-                transform.translation.x += delta;
-            }
-            Direction::UpLeft => {
-                transform.translation.y += delta;
-                transform.translation.x -= delta;
-            }
-            Direction::DownRight => {
-                transform.translation.y -= delta;
-                transform.translation.x += delta;
-            }
-            Direction::DownLeft => {
-                transform.translation.y -= delta;
-                transform.translation.x -= delta;
             }
         }
     }
@@ -305,7 +124,7 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         enemy: asset_server.load(ENEMY_SPRITE),
     };
 
+    let enemy_count = EnemyCount(0);
     commands.insert_resource(game_textures);
-
-    commands.insert_resource(EnemySpawnTimer::new(10, 750.)); 
+    commands.insert_resource(enemy_count);
 }

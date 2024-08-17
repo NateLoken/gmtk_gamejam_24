@@ -1,17 +1,4 @@
-use bevy::prelude::*;
-
-#[derive(Component, PartialEq)]
-pub enum Direction {
-    Up,
-    UpLeft,
-    Left,
-    Right,
-    UpRight,
-    Down,
-    DownLeft,
-    DownRight,
-    None,
-}
+use bevy::prelude::{Component, Transform};
 
 // Common Components
 #[derive(Component)]
@@ -37,39 +24,9 @@ impl Player {
     }
 }
 
-// Add the EnemySpawnTimer struct
+// Enemy components
 #[derive(Component)]
-#[derive(Resource)]
-pub struct EnemySpawnTimer {
-    pub timer: Timer,
-    pub enemies_spawned: usize,
-    pub total_enemies: usize,
-    pub spawn_radius: f32,
-}
-
-impl EnemySpawnTimer {
-    pub fn new(total_enemies: usize, spawn_radius: f32) -> Self {
-        EnemySpawnTimer {
-            timer: Timer::from_seconds(1.0, TimerMode::Repeating),
-            enemies_spawned: 0,
-            total_enemies,
-            spawn_radius,
-        }
-    }
-}
-
-#[derive(Component)]
-pub struct MovementSpeed(pub f32);
-
-#[derive(Component)]
-pub struct DirectionComponent {
-    pub direction: Direction,
-}
-
-#[derive(Component)]
-pub struct Tag {
-    pub name: String,
-}
+pub struct Enemy;
 
 #[derive(Component)]
 pub struct CollisionBox {
