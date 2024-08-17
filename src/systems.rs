@@ -1,6 +1,8 @@
+use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
 use crate::components::{Direction, DirectionComponent, MovementSpeed, CollisionBox, Player, Tag, EnemySpawnTimer};
 use crate::events::{CollisionEvent, Score};
+use crate::MousePosition;
 use rand::Rng;
 use std::f32::consts::PI;
 
@@ -274,6 +276,18 @@ pub fn sprite_movement(time: Res<Time>, mut sprite_position: Query<(&mut Directi
             }
         }
     }
+}
+
+// System to track absolute mouse position
+pub fn track_cursor_position(mut cursor_moved_events: EventReader<CursorMoved>, 
+    mut mouse_position: ResMut<MousePosition>,) {
+    cursor_moved_events
+        .read() // Use par_read to access events in a parallel-safe manner
+        .for_each(|event| {
+            mouse_position.x = event.position.x;
+            mouse_position.y = event.position.y;
+            // Example: increment the counter
+        });
 }
 
 pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {

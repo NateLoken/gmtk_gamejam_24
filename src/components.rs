@@ -58,6 +58,13 @@ pub struct DirectionComponent {
     pub direction: Direction,
 }
 
+#[derive(Default, Resource)]
+pub struct MousePosition {
+    pub x: f32,
+    pub y: f32,
+}
+
+
 #[derive(Component)]
 pub struct Tag {
     pub name: String,
