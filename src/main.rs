@@ -29,7 +29,8 @@ fn main() {
                 update_player_position,
                 track_mouse_and_draw_line,
                 draw_arc_on_e,
-                draw_circle_around_player
+                draw_circle_around_player,
+                update_lifetime
             ),
         )
         .add_event::<CollisionEvent>()

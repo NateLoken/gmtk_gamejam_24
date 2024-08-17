@@ -5,7 +5,7 @@ use bevy::utils::HashSet;
 use bevy::window::PrimaryWindow;
 use crate::components::{Direction, DirectionComponent, MovementSpeed, CollisionBox, Player, Tag, EnemySpawnTimer};
 use crate::events::{CollisionEvent, Score};
-use crate::{MousePosition, PointMarker, Points};
+use crate::{Lifetime, MousePosition, PointMarker, Points};
 use crate::Line;
 use rand::Rng;
 use std::f32::consts::PI;
@@ -174,18 +174,19 @@ pub fn check_collisions(
 
                 // Despawn the enemy
                 commands.entity(enemy_entity).despawn();
+                break;
 
-                despawned_entities.insert(enemy_entity);  // Track despawned entity
+                //despawned_entities.insert(enemy_entity);  // Track despawned entity
 
-                // Despawn all points and clear the resource
-                for (point_entity, _) in points_query.iter() {
-                    if despawned_entities.contains(&point_entity) {
-                        continue; // Skip if already despawned
-                    }
-                    commands.entity(point_entity).despawn();
-                    despawned_entities.insert(point_entity);  // Track despawned point
-                }
-                points.0.clear(); // Clear the stored points in the resource
+                // // Despawn all points and clear the resource
+                // for (point_entity, _) in points_query.iter() {
+                //     if despawned_entities.contains(&point_entity) {
+                //         continue; // Skip if already despawned
+                //     }
+                //     commands.entity(point_entity).despawn();
+                //     despawned_entities.insert(point_entity);  // Track despawned point
+                // }
+                // points.0.clear(); // Clear the stored points in the resource
             }
         }
     }
@@ -214,7 +215,7 @@ pub fn check_collisions(
                 commands.entity(enemy_entity).despawn();
 
                 // Despawn the line after it collides with an enemy
-                commands.entity(line_entity).despawn();
+                //commands.entity(line_entity).despawn();
                 break;
             }
         }
@@ -431,7 +432,10 @@ pub fn track_mouse_and_draw_line(
                 ..Default::default()
             })
             .insert(Line)
-            .insert(CollisionBox::new(length, 2.0));
+            .insert(CollisionBox::new(length, 20.0))
+            .insert(Lifetime {
+            timer: Timer::from_seconds(0.1, TimerMode::Once),
+            });
 
             player.move_to(mouse_position.x, mouse_position.y, &mut transform);
         }
@@ -485,7 +489,10 @@ fn draw_arc_on_e(
                         },
                         ..Default::default()
 
-                    }).insert(PointMarker);  // Add this line;
+                    }).insert(PointMarker)
+                    .insert(Lifetime {
+                        timer: Timer::from_seconds(0.1, TimerMode::Once),
+                        });  // Add this line;
                 }
             }
         }
@@ -532,12 +539,29 @@ pub fn draw_circle_around_player(
                             ..Default::default()
                         },
                         ..Default::default()
-                    }).insert(PointMarker);
+                    }).insert(PointMarker)
+                    .insert(Lifetime {
+                        timer: Timer::from_seconds(0.1, TimerMode::Once),
+                        }); 
                 }
             }
         }
     }
     }
+
+pub fn update_lifetime(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut Lifetime)>,
+) {
+    for (entity, mut lifetime) in query.iter_mut() {
+        lifetime.timer.tick(time.delta());
+
+        if lifetime.timer.finished() {
+            commands.entity(entity).despawn();  // This command is deferred and will execute later
+        }
+    }
+}
 
 
 pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {

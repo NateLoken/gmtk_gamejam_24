@@ -49,6 +49,11 @@ impl Player {
 #[derive(Component)]
 pub struct PointMarker;
 
+#[derive(Component)]
+pub struct Lifetime {
+    pub(crate) timer: Timer,
+}
+
 // Add the EnemySpawnTimer struct
 #[derive(Component)]
 #[derive(Resource)]
