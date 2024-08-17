@@ -12,6 +12,8 @@ pub enum Direction {
     DownRight,
     None,
 }
+#[derive(Component)]
+pub struct CooldownUi;
 
 #[derive(Component)]
 pub struct Line;
@@ -111,6 +113,14 @@ impl Cooldowns {
     pub fn reset(&mut self, ability: Ability) {
         if let Some(timer) = self.cooldowns.get_mut(&ability) {
             timer.reset();
+        }
+    }
+
+    pub fn get_cooldown(&mut self, ability: Ability) -> Option<f32> {
+        if let Some(timer) = self.cooldowns.get_mut(&ability) {
+            Some(timer.remaining_secs())
+        } else {
+            None
         }
     }
 }

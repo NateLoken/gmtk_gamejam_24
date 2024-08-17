@@ -3,9 +3,10 @@ use bevy::prelude::*;
 use bevy::sprite::MaterialMesh2dBundle;
 use bevy::utils::HashSet;
 use bevy::window::PrimaryWindow;
+use bevy::ui::{AlignItems, JustifyContent, Val, UiRect, Style};
 use crate::components::{Direction, DirectionComponent, MovementSpeed, CollisionBox, Player, Tag, EnemySpawnTimer};
 use crate::events::{CollisionEvent, Score};
-use crate::{Ability, Cooldowns, Invulnerability, Lifetime, MousePosition, PointMarker, Points};
+use crate::{Ability, CooldownUi, Cooldowns, Invulnerability, Lifetime, MousePosition, PointMarker, Points};
 use crate::Line;
 use rand::Rng;
 use std::f32::consts::PI;
@@ -571,6 +572,26 @@ pub fn manage_invulnerability(
     }
 }
 
+pub fn update_cooldowns_ui(
+    mut enemy_query: Query<(&mut DirectionComponent, &Transform), Without<Player>>,
+    mut cooldowns_query: Query<&mut Cooldowns>,
+    mut text_query: Query<&mut Text, With<CooldownUi>>,
+) {
+    for mut cooldowns in cooldowns_query.iter_mut() {
+        for (i, mut text) in text_query.iter_mut().enumerate() {
+            let ability_text = match i {
+                0 => format!("Attack: {:.1}s", cooldowns.get_cooldown(Ability::Attack).unwrap_or(0.0)),
+                1 => format!("Ranged: {:.1}s", cooldowns.get_cooldown(Ability::Ranged).unwrap_or(0.0)),
+                2 => format!("Dash: {:.1}s", cooldowns.get_cooldown(Ability::Dash).unwrap_or(0.0)),
+                3 => format!("Aoe: {:.1}s", cooldowns.get_cooldown(Ability::Aoe).unwrap_or(0.0)),
+                _ => "Unknown".to_string(),
+            };
+
+            text.sections[0].value = ability_text;
+        }
+    }
+}
+
 pub fn update_cooldowns(
     time: Res<Time>,
     mut query: Query<&mut Cooldowns>,
@@ -704,7 +725,62 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         }),
     );
+    commands.spawn(NodeBundle {
+        style: Style {
+            width: Val::Percent(100.0),
+            height: Val::Px(50.0),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            ..Default::default()
+        },
+        background_color: Color::srgba(0.15, 0.15, 0.15, 0.9).into(),
+        ..Default::default()
+    })
+    .insert(CooldownUi)
+    .with_children(|parent| {
+        // Create a UI element for each ability
+        let abilities = [
+            Ability::Attack,
+            Ability::Ranged,
+            Ability::Dash,
+            Ability::Aoe,
+        ];
 
+        for ability in abilities.iter() {
+            let ability_name = match ability {
+                Ability::Dash => "Dash",
+                Ability::Ranged => "Ranged",
+                Ability::Attack => "Attack",
+                Ability::Aoe => "Bladestorm",
+            };
+
+            parent.spawn(NodeBundle {
+                style: Style {
+                    width: Val::Percent(20.0),
+                    height: Val::Px(100.0),                    
+                    margin: UiRect::all(Val::Px(5.0)),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..Default::default()
+                },
+                background_color: Color::srgba(0.9, 0.9, 0.9, 0.5).into(), // Use `background_color` instead of `color`
+                ..Default::default()
+            })
+            .with_children(|parent| {
+                parent.spawn(TextBundle {
+                    text: Text::from_section(
+                        format!("{}: {:.1}s", ability_name.to_string(), 0.0.to_string()), // Ability name and placeholder cooldown
+                        TextStyle {
+                            font: asset_server.load("FiraSans-Bold.ttf"),
+                            font_size: 30.0,
+                            color: Color::BLACK,
+                        },
+                    ), // Remove the extra argument
+                    ..Default::default()
+                });
+            });
+        }
+    });
     commands.spawn((
         SpriteBundle {
             texture: asset_server.load("../assets/blue_box.png"),
@@ -719,3 +795,5 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     commands.insert_resource(EnemySpawnTimer::new(10, 750.)); 
 }
+
+

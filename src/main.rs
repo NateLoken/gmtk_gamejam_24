@@ -28,8 +28,9 @@ fn main() {
                 update_mouse_position,
                 update_player_position,
                 update_lifetime,
-                update_cooldowns, // Manage ability cooldowns
-                use_ability, // Use abilities including ranged_attack
+                update_cooldowns, 
+                update_cooldowns_ui,
+                use_ability, 
                 manage_invulnerability
             ),
         )
