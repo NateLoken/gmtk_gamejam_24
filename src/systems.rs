@@ -1,8 +1,11 @@
-use bevy::input::mouse::MouseMotion;
+use bevy::input::mouse::{self, MouseMotion};
 use bevy::prelude::*;
+use bevy::sprite::MaterialMesh2dBundle;
+use bevy::window::PrimaryWindow;
 use crate::components::{Direction, DirectionComponent, MovementSpeed, CollisionBox, Player, Tag, EnemySpawnTimer};
 use crate::events::{CollisionEvent, Score};
 use crate::MousePosition;
+use crate::Line;
 use rand::Rng;
 use std::f32::consts::PI;
 
@@ -278,17 +281,88 @@ pub fn sprite_movement(time: Res<Time>, mut sprite_position: Query<(&mut Directi
     }
 }
 
-// System to track absolute mouse position
-pub fn track_cursor_position(mut cursor_moved_events: EventReader<CursorMoved>, 
-    mut mouse_position: ResMut<MousePosition>,) {
-    cursor_moved_events
-        .read() // Use par_read to access events in a parallel-safe manner
-        .for_each(|event| {
-            mouse_position.x = event.position.x;
-            mouse_position.y = event.position.y;
-            // Example: increment the counter
-        });
+// System to update the MousePosition resource whenever the mouse moves
+pub fn update_mouse_position(
+    q_windows: Query<&Window, With<PrimaryWindow>>,
+    mut mouse_position: ResMut<MousePosition>,
+    camera_query: Query<(&GlobalTransform, &OrthographicProjection), With<Camera2d>>,
+) {
+    let window = q_windows.single();
+
+    if let Some(cursor_position) = window.cursor_position() {
+        if let Ok((camera_transform, projection)) = camera_query.get_single() {
+            // Convert the cursor position to NDC (Normalized Device Coordinates)
+            let window_size = Vec2::new(window.width(), window.height());
+            let ndc = (cursor_position / window_size) * 2.0 - Vec2::ONE;
+
+            // Use the orthographic projection's area to convert NDC to world coordinates
+            let world_position = camera_transform.translation()
+                + Vec3::new(
+                    ndc.x * projection.area.width() / 2.0,
+                    -ndc.y * projection.area.height() / 2.0,
+                    0.0,
+                );
+
+            mouse_position.x = world_position.x;
+            mouse_position.y = world_position.y;
+
+            //println!("Mouse Position in World: ({}, {})", mouse_position.x, mouse_position.y);
+        }
+    }
 }
+
+// System to update the Player's position whenever the player's position changes
+pub fn update_player_position(
+    mut player_query: Query<(&Transform, &mut Player)>,
+) {
+    if let Ok((transform, mut player)) = player_query.get_single_mut() {
+        player.update_position(transform);
+
+       // println!("Player Position in World: ({}, {})", player.x, player.y);
+    }
+}
+
+// System to draw a line from the player's position to the mouse position when 'Q' is pressed
+pub fn track_mouse_and_draw_line(
+    mut commands: Commands,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mouse_position: Res<MousePosition>,
+    player_query: Query<&Player>,
+    asset_server: Res<AssetServer>,
+) {
+    if keyboard_input.just_pressed(KeyCode::KeyQ) {
+        if let Ok(player) = player_query.get_single() {
+            let player_position = Vec2::new(player.x, player.y);
+            let mouse_position = Vec2::new(mouse_position.x, mouse_position.y);
+
+            let direction = mouse_position - player_position;
+            let length = direction.length();
+
+            // Calculate the midpoint between the player and the mouse
+            let midpoint = player_position + direction / 2.0;
+
+            // Correct rotation angle
+            let angle = direction.y.atan2(direction.x);
+
+            // Load a small texture for the line (e.g., 1x1 pixel)
+            let line_texture_handle = asset_server.load("red_line.png");
+
+            // Spawn the line as a sprite
+            commands.spawn(SpriteBundle {
+                texture: line_texture_handle,
+                transform: Transform {
+                    translation: Vec3::new(midpoint.x, midpoint.y, 0.0), // Center the line between the player and the mouse
+                    rotation: Quat::from_rotation_z(angle),   // Rotate to face the mouse position
+                    scale: Vec3::new(length, 2.0, 1.0),       // Scale to the length, and set the thickness
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .insert(Line);
+        }
+    }
+}
+
 
 pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());

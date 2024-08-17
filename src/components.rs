@@ -14,18 +14,28 @@ pub enum Direction {
 }
 
 #[derive(Component)]
+pub struct Line;
+
+#[derive(Component)]
 pub struct Player {
     pub health: i32,
+    pub x: f32,
+    pub y: f32,
 }
 
 impl Player {
     pub fn new(health: i32) -> Self {
-        Player { health }
+        Player { health, x: 0., y: 0. }
     }
 
     pub fn take_damage(&mut self, amount: i32) {
         self.health -= amount;
         println!("Player took {} damage, remaining health: {}", amount, self.health);
+    }
+
+    pub fn update_position(&mut self, transform: &Transform) {
+        self.x = transform.translation.x;
+        self.y = transform.translation.y;
     }
 }
 

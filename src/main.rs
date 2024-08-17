@@ -24,7 +24,9 @@ fn main() {
                 handle_collisions,
                 spawn_enemies_over_time,
                 camera_follow_player,
-                track_cursor_position
+                update_mouse_position,
+                update_player_position,
+                track_mouse_and_draw_line
             ),
         )
         .add_event::<CollisionEvent>()
