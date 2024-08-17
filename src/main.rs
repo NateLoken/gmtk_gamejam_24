@@ -30,6 +30,7 @@ fn main() {
                 update_lifetime,
                 update_cooldowns, // Manage ability cooldowns
                 use_ability, // Use abilities including ranged_attack
+                manage_invulnerability
             ),
         )
         .add_event::<CollisionEvent>()

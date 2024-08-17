@@ -5,7 +5,7 @@ use bevy::utils::HashSet;
 use bevy::window::PrimaryWindow;
 use crate::components::{Direction, DirectionComponent, MovementSpeed, CollisionBox, Player, Tag, EnemySpawnTimer};
 use crate::events::{CollisionEvent, Score};
-use crate::{Ability, Cooldowns, Lifetime, MousePosition, PointMarker, Points};
+use crate::{Ability, Cooldowns, Invulnerability, Lifetime, MousePosition, PointMarker, Points};
 use crate::Line;
 use rand::Rng;
 use std::f32::consts::PI;
@@ -118,7 +118,6 @@ pub fn handle_collisions(
                 entities_to_despawn.push(*entity); // Mark the entity for despawning + needs to be this way to avoid segfault
                 enemy_killed(&mut score);
             }
-            // Example: increment the counter
         });
         for entity in entities_to_despawn {
             if commands.get_entity(entity).is_some() { //make sure it exists
@@ -137,13 +136,13 @@ pub fn display_score(_score: Res<Score>) {
 }
 
 pub fn check_collisions(
-    mut player_query: Query<(&Transform, &CollisionBox, &mut Player)>,
+    mut player_query: Query<(&mut Player, &CollisionBox, &Transform), Without<Invulnerability>>,
     other_entities_query: Query<(Entity, &Transform, &CollisionBox), Without<Player>>,
     mut collision_events: EventWriter<CollisionEvent>,
     points_query: Query<(Entity, &Transform), With<PointMarker>>,
     mut score: ResMut<Score>,
     mut commands: Commands,
-    mut points: ResMut<Points>,  // Now accessed as mutable
+    mut points: ResMut<Points>,  
     mut despawned_entities: Local<HashSet<Entity>>,  // Track despawned entities
     line_query: Query<(Entity, &Transform, &CollisionBox), With<Line>>,
 ) {
@@ -167,18 +166,6 @@ pub fn check_collisions(
                 // Despawn the enemy
                 commands.entity(enemy_entity).despawn();
                 break;
-
-                //despawned_entities.insert(enemy_entity);  // Track despawned entity
-
-                // // Despawn all points and clear the resource
-                // for (point_entity, _) in points_query.iter() {
-                //     if despawned_entities.contains(&point_entity) {
-                //         continue; // Skip if already despawned
-                //     }
-                //     commands.entity(point_entity).despawn();
-                //     despawned_entities.insert(point_entity);  // Track despawned point
-                // }
-                // points.0.clear(); // Clear the stored points in the resource
             }
         }
     }
@@ -212,10 +199,24 @@ pub fn check_collisions(
             }
         }
     }
-    for (player_transform, player_collision_box, mut player) in player_query.iter_mut() {
-        for (entity, other_transform, other_collision_box) in other_entities_query.iter() {
-            if player_collision_box.intersects(player_transform, other_collision_box, other_transform) {
-                collision_events.send(CollisionEvent(entity));
+    for (mut player, player_box, player_transform) in player_query.iter_mut() {
+        for (enemy_entity, enemy_transform, enemy_box) in other_entities_query.iter() {
+            let enemy_min_x = enemy_transform.translation.x - enemy_box.width / 2.0;
+            let enemy_max_x = enemy_transform.translation.x + enemy_box.width / 2.0;
+            let enemy_min_y = enemy_transform.translation.y - enemy_box.height / 2.0;
+            let enemy_max_y = enemy_transform.translation.y + enemy_box.height / 2.0;
+
+            let player_min_x = player_transform.translation.x - player_box.width / 2.0;
+            let player_max_x = player_transform.translation.x + player_box.width / 2.0;
+            let player_min_y = player_transform.translation.y - player_box.height / 2.0;
+            let player_max_y = player_transform.translation.y + player_box.height / 2.0;
+
+            if player_max_x > enemy_min_x
+                && player_min_x < enemy_max_x
+                && player_max_y > enemy_min_y
+                && player_min_y < enemy_max_y
+            {
+                // Handle collision, but only if player is not invulnerable
                 player.take_damage(10);
             }
         }
@@ -394,114 +395,18 @@ pub fn update_player_position(
        // println!("Player Position in World: ({}, {})", player.x, player.y);
     }
 }
-
-// System to draw a line from the player's position to the mouse position when 'Q' is pressed
-// pub fn dash_attack(
-//     mut commands: Commands,
-//     keyboard_input: Res<ButtonInput<KeyCode>>,
-//     mouse_position: Res<MousePosition>,
-//     mut player_query: Query<(&mut Transform, &mut Player)>,
-//     asset_server: Res<AssetServer>,
-// ) {
-//     if keyboard_input.just_pressed(KeyCode::KeyQ) {
-//         if let Ok((mut transform, mut player)) = player_query.get_single_mut() {
-//             let player_position = Vec2::new(player.x, player.y);
-//             let mouse_position = Vec2::new(mouse_position.x, mouse_position.y);
-
-//             let direction = mouse_position - player_position;
-//             let length = direction.length();
-
-//             // Calculate the midpoint between the player and the mouse
-//             let midpoint = player_position + direction / 2.0;
-
-//             // Correct rotation angle
-//             let angle = direction.y.atan2(direction.x);
-
-//             // Load a small texture for the line (e.g., 1x1 pixel)
-//             let line_texture_handle = asset_server.load("red_line.png");
-
-//             // Spawn the line as a sprite with a bounding box
-//             commands.spawn(SpriteBundle {
-//                 texture: line_texture_handle,
-//                 transform: Transform {
-//                     translation: Vec3::new(midpoint.x, midpoint.y, 0.0), // Center the line between the player and the mouse
-//                     rotation: Quat::from_rotation_z(angle),   // Rotate to face the mouse position
-//                     scale: Vec3::new(length, 2.0, 1.0),       // Scale to the length, and set the thickness
-//                     ..Default::default()
-//                 },
-//                 ..Default::default()
-//             })
-//             .insert(Line)
-//             .insert(CollisionBox::new(length, 20.0))
-//             .insert(Lifetime {
-//             timer: Timer::from_seconds(0.1, TimerMode::Once),
-//             });
-
-//             player.move_to(mouse_position.x, mouse_position.y, &mut transform);
-//         }
-//     }
-// }
-
-// System to draw a line from the player's position to the mouse position when 'Q' is pressed
-// pub fn ranged_attack(
-//     mut commands: Commands,
-//     keyboard_input: Res<ButtonInput<KeyCode>>,
-//     mouse_position: Res<MousePosition>,
-//     mut player_query: Query<(&mut Transform, &mut Player)>,
-//     asset_server: Res<AssetServer>,
-// ) {
-//     if keyboard_input.just_pressed(KeyCode::KeyF) {
-//         if let Ok((mut transform, mut player)) = player_query.get_single_mut() {
-//             let player_position = Vec2::new(player.x, player.y);
-//             let mouse_position = Vec2::new(mouse_position.x, mouse_position.y);
-
-//             let direction = mouse_position - player_position;
-//             let length = direction.length();
-
-//             // Calculate the midpoint between the player and the mouse
-//             let midpoint = player_position + direction / 2.0;
-
-//             // Correct rotation angle
-//             let angle = direction.y.atan2(direction.x);
-
-//             // Load a small texture for the line (e.g., 1x1 pixel)
-//             let line_texture_handle = asset_server.load("red_line.png");
-
-//             // Spawn the line as a sprite with a bounding box
-//             commands.spawn(SpriteBundle {
-//                 texture: line_texture_handle,
-//                 transform: Transform {
-//                     translation: Vec3::new(midpoint.x, midpoint.y, 0.0), // Center the line between the player and the mouse
-//                     rotation: Quat::from_rotation_z(angle),   // Rotate to face the mouse position
-//                     scale: Vec3::new(length, 2.0, 1.0),       // Scale to the length, and set the thickness
-//                     ..Default::default()
-//                 },
-//                 ..Default::default()
-//             })
-//             .insert(Line)
-//             .insert(CollisionBox::new(length, 20.0))
-//             .insert(Lifetime {
-//             timer: Timer::from_seconds(0.1, TimerMode::Once),
-//             });
-
-//         }
-//     }
-// }
-
-
-    
     
 pub fn use_ability(
     mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut cooldown_query: Query<&mut Cooldowns>,
-    mut player_query: Query<(&mut Transform, &mut Player)>,
+    mut player_query: Query<(Entity, &mut Transform, &mut Player)>,
     mouse_position: Res<MousePosition>,
     asset_server: Res<AssetServer>,
     mut points: ResMut<Points>,
 ) {
     if let Ok(mut cooldowns) = cooldown_query.get_single_mut() {
-        if let Ok((mut transform, mut player)) = player_query.get_single_mut() {
+        if let Ok((player_entity, mut transform, mut player)) = player_query.get_single_mut() {
         let player_position = Vec2::new(transform.translation.x, transform.translation.y);
 
         // Line-drawing ability (mapped to the F key)
@@ -535,7 +440,7 @@ pub fn use_ability(
         }
         // Arc-drawing ability (mapped to the E key)
         else if keyboard_input.just_pressed(KeyCode::KeyQ) {
-            if cooldowns.is_ready(Ability::Attack) {  // 
+            if cooldowns.is_ready(Ability::Attack) {  
                 draw_arc_ability(
                     commands,
                     player_position,
@@ -550,7 +455,7 @@ pub fn use_ability(
         }
         // Circle-drawing ability (mapped to the T key)
         else if keyboard_input.just_pressed(KeyCode::KeyT) {
-            if cooldowns.is_ready(Ability::Aoe) {  // Ensure you add a DrawCircle variant to your Ability enum
+            if cooldowns.is_ready(Ability::Aoe) {  
                 draw_circle_ability(
                     commands,
                     player_position,
@@ -611,9 +516,9 @@ fn dash_attack(
     player_position: Vec2,
     mouse_position: Vec2,
     asset_server: Res<AssetServer>,
-    mut player_query: Query<(&mut Transform, &mut Player)>,
+    mut player_query: Query<(Entity, &mut Transform, &mut Player)>,
 ) {
-    if let Ok((mut transform, mut player)) = player_query.get_single_mut() {
+    if let Ok((player_entity, mut transform, mut player)) = player_query.get_single_mut() {
         let direction = mouse_position - player_position;
         let length = direction.length();
 
@@ -642,11 +547,29 @@ fn dash_attack(
         .insert(Lifetime {
             timer: Timer::from_seconds(0.1, TimerMode::Once),
         });
+
+        // Make the player invulnerable for 0.5 seconds
+        commands.entity(player_entity).insert(Invulnerability {
+            timer: Timer::from_seconds(0.5, TimerMode::Once),
+        });
+
         player.move_to(mouse_position.x, mouse_position.y, &mut transform);
     }
     
 }
 
+pub fn manage_invulnerability(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut Invulnerability)>,
+) {
+    for (entity, mut invulnerability) in query.iter_mut() {
+        invulnerability.timer.tick(time.delta());
+        if invulnerability.timer.finished() {
+            commands.entity(entity).remove::<Invulnerability>();
+        }
+    }
+}
 
 pub fn update_cooldowns(
     time: Res<Time>,
@@ -706,113 +629,6 @@ fn draw_arc_ability(
         }
     }
 }
-// System to draw an arc from the player's position towards the mouse position when 'Q' is pressed
-// pub // System to draw a filled arc from the player's position towards the mouse position when 'Q' is pressed
-// fn draw_arc_on_e(
-//     mut commands: Commands,
-//     keyboard_input: Res<ButtonInput<KeyCode>>,
-//     mouse_position: Res<MousePosition>,
-//     player_query: Query<&Player>,
-//     asset_server: Res<AssetServer>,
-//     mut points: ResMut<Points>,
-    
-// ) {
-//     if keyboard_input.just_pressed(KeyCode::KeyE) {
-//         if let Ok(player) = player_query.get_single() {
-//             let player_position = Vec2::new(player.x, player.y);
-//             let mouse_position = Vec2::new(mouse_position.x, mouse_position.y);
-
-//             let direction = (mouse_position - player_position).normalize();
-//             let start_angle = direction.y.atan2(direction.x);
-
-//             let max_radius = 250.0; // Max radius for the arc
-//             let theta = 0.0725; // Smaller theta for finer increments
-//             let arc_span = PI / 2.0; // 90 degrees in radians
-//             let radius_step = 10.0; // Distance between each concentric arc
-
-//             let arc_segments = (arc_span / theta) as i32; // Number of segments for 90 degrees
-
-//             points.0.clear();
-
-//             for radius in (radius_step as i32..=max_radius as i32).step_by(radius_step as usize) {
-//                 for i in 0..=arc_segments {
-//                     let angle = start_angle - (arc_span / 2.0) + i as f32 * theta;
-//                     let arc_point = Vec2::new(
-//                         player_position.x + radius as f32 * angle.cos(),
-//                         player_position.y + radius as f32 * angle.sin(),
-//                     );
-
-//                     points.0.push(arc_point);
-
-//                     // Draw a small circle or segment at the arc point
-//                     commands.spawn(SpriteBundle {
-//                         texture: asset_server.load("red_line.png"),
-//                         transform: Transform {
-//                             translation: Vec3::new(arc_point.x, arc_point.y, 0.0),
-//                             scale: Vec3::new(5.0, 5.0, 1.0), // Adjust size as needed
-//                             ..Default::default()
-//                         },
-//                         ..Default::default()
-
-//                     }).insert(PointMarker)
-//                     .insert(Lifetime {
-//                         timer: Timer::from_seconds(0.1, TimerMode::Once),
-//                         });  // Add this line;
-//                 }
-//             }
-//         }
-//     }
-// }
-
-// // System to draw a circle around the player's position with a radius of 350 pixels
-// pub fn draw_circle_around_player(
-//     mut commands: Commands,
-//     player_query: Query<&Player>,
-//     asset_server: Res<AssetServer>,
-//     mut points: ResMut<Points>,
-//     keyboard_input: Res<ButtonInput<KeyCode>>,
-// ) {
-//     if keyboard_input.just_pressed(KeyCode::KeyT) {
-//         if let Ok(player) = player_query.get_single() {
-//             let player_position = Vec2::new(player.x, player.y);
-    
-//             let max_radius = 350.0; // Maximum radius for the circle
-//             let theta = 0.0725; // Smaller theta for finer increments
-//             let total_angle = 2.0 * PI; // Full circle (360 degrees)
-//             let radius_step = 10.0; // Distance between each concentric circle
-//             let arc_segments = (total_angle / theta) as i32; // Number of segments for the full circle
-
-//             points.0.clear();
-    
-//             // Iterate over increasing radii to fill the circle
-//             for radius in (0..=max_radius as i32).step_by(radius_step as usize) {
-//                 for i in 0..=arc_segments {
-//                     let angle = i as f32 * theta;
-//                     let circle_point = Vec2::new(
-//                         player_position.x + radius as f32 * angle.cos(),
-//                         player_position.y + radius as f32 * angle.sin(),
-//                     );
-
-//                     points.0.push(circle_point);
-    
-//                     // Draw a small circle or segment at the circle point
-//                     commands.spawn(SpriteBundle {
-//                         texture: asset_server.load("red_line.png"),
-//                         transform: Transform {
-//                             translation: Vec3::new(circle_point.x, circle_point.y, 0.0),
-//                             scale: Vec3::new(5.0, 5.0, 1.0), // Adjust size as needed
-//                             ..Default::default()
-//                         },
-//                         ..Default::default()
-//                     }).insert(PointMarker)
-//                     .insert(Lifetime {
-//                         timer: Timer::from_seconds(0.1, TimerMode::Once),
-//                         }); 
-//                 }
-//             }
-//         }
-//     }
-//     }
 
 fn draw_circle_ability(
     mut commands: Commands,
@@ -875,7 +691,7 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
     commands.spawn(
         TextBundle::from_section(
-            "WASD to Move around, E to Melee, Q to Dash, R to kill",
+            "WASD to Move around, Q to Melee, E for Ranged, T for AoE, F to Dash",
             TextStyle {
                 color: Color::WHITE,
                 ..default()
