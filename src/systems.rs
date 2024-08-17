@@ -113,7 +113,7 @@ pub fn handle_collisions(
     collision_events
         .read() // Use par_read to access events in a parallel-safe manner
         .for_each(|CollisionEvent(entity)| {
-            if keyboard_input.pressed(KeyCode::KeyE) {
+            if keyboard_input.pressed(KeyCode::KeyR) {
                 entities_to_despawn.push(*entity); // Mark the entity for despawning + needs to be this way to avoid segfault
                 enemy_killed(&mut score);
             }
@@ -327,11 +327,11 @@ pub fn track_mouse_and_draw_line(
     mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mouse_position: Res<MousePosition>,
-    player_query: Query<&Player>,
+    mut player_query: Query<(&mut Transform, &mut Player)>,
     asset_server: Res<AssetServer>,
 ) {
     if keyboard_input.just_pressed(KeyCode::KeyQ) {
-        if let Ok(player) = player_query.get_single() {
+        if let Ok((mut transform, mut player)) = player_query.get_single_mut() {
             let player_position = Vec2::new(player.x, player.y);
             let mouse_position = Vec2::new(mouse_position.x, mouse_position.y);
 
@@ -359,6 +359,54 @@ pub fn track_mouse_and_draw_line(
                 ..Default::default()
             })
             .insert(Line);
+        player.move_to(mouse_position.x, mouse_position.y, &mut transform);
+
+        }
+    }
+}
+
+// System to draw an arc from the player's position towards the mouse position when 'Q' is pressed
+pub // System to draw a filled arc from the player's position towards the mouse position when 'Q' is pressed
+fn draw_arc_on_e(
+    mut commands: Commands,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mouse_position: Res<MousePosition>,
+    player_query: Query<&Player>,
+    asset_server: Res<AssetServer>,
+) {
+    if keyboard_input.just_pressed(KeyCode::KeyE) {
+        if let Ok(player) = player_query.get_single() {
+            let player_position = Vec2::new(player.x, player.y);
+            let mouse_position = Vec2::new(mouse_position.x, mouse_position.y);
+
+            let direction = (mouse_position - player_position).normalize();
+            let start_angle = direction.y.atan2(direction.x);
+
+            let max_radius = 250.0; // Max radius for the arc
+            let arc_segments = 30;  // Number of segments in each arc
+            let angle_increment = PI / arc_segments as f32; // Half-circle (PI radians) arc
+            let radius_step = 10.0; // Distance between each concentric arc
+
+            for radius in (radius_step as i32..=max_radius as i32).step_by(radius_step as usize) {
+                for i in 0..=arc_segments {
+                    let angle = start_angle - (PI / 2.0) + i as f32 * angle_increment;
+                    let arc_point = Vec2::new(
+                        player_position.x + radius as f32 * angle.cos(),
+                        player_position.y + radius as f32 * angle.sin(),
+                    );
+
+                    // Draw a small circle or segment at the arc point
+                    commands.spawn(SpriteBundle {
+                        texture: asset_server.load("red_line.png"),
+                        transform: Transform {
+                            translation: Vec3::new(arc_point.x, arc_point.y, 0.0),
+                            scale: Vec3::new(5.0, 5.0, 1.0), // Adjust size as needed
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    });
+                }
+            }
         }
     }
 }
@@ -368,7 +416,7 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
     commands.spawn(
         TextBundle::from_section(
-            "WASD to Move around, E to kill",
+            "WASD to Move around, E to Melee, Q to Dash, R to kill",
             TextStyle {
                 color: Color::WHITE,
                 ..default()

@@ -26,7 +26,8 @@ fn main() {
                 camera_follow_player,
                 update_mouse_position,
                 update_player_position,
-                track_mouse_and_draw_line
+                track_mouse_and_draw_line,
+                draw_arc_on_e
             ),
         )
         .add_event::<CollisionEvent>()

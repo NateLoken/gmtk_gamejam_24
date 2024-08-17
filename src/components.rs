@@ -37,6 +37,13 @@ impl Player {
         self.x = transform.translation.x;
         self.y = transform.translation.y;
     }
+
+    pub fn move_to(&mut self, x: f32, y: f32, transform: &mut Transform) {
+        self.x = x;
+        self.y = y;
+        transform.translation.x = x;
+        transform.translation.y = y;
+    }
 }
 
 // Add the EnemySpawnTimer struct
