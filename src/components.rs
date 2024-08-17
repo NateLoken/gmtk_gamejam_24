@@ -46,6 +46,9 @@ impl Player {
     }
 }
 
+#[derive(Component)]
+pub struct PointMarker;
+
 // Add the EnemySpawnTimer struct
 #[derive(Component)]
 #[derive(Resource)]
@@ -81,11 +84,16 @@ pub struct MousePosition {
     pub y: f32,
 }
 
+#[derive(Default, Resource)]
+pub struct Points(pub Vec<Vec2>);
+
 
 #[derive(Component)]
 pub struct Tag {
     pub name: String,
 }
+
+
 
 #[derive(Component)]
 pub struct CollisionBox {

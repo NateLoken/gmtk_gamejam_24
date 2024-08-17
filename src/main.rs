@@ -11,6 +11,7 @@ fn main() {
     App::new()
         .insert_resource(Score::new())
         .insert_resource(MousePosition::default())
+        .insert_resource(Points::default())
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
         .add_systems(
@@ -27,7 +28,8 @@ fn main() {
                 update_mouse_position,
                 update_player_position,
                 track_mouse_and_draw_line,
-                draw_arc_on_e
+                draw_arc_on_e,
+                draw_circle_around_player
             ),
         )
         .add_event::<CollisionEvent>()
