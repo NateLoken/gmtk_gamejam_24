@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy_quickmenu::*;
 
 #[derive(Component, PartialEq)]
 pub enum Direction {
@@ -29,6 +28,15 @@ pub struct Player {
 impl Player {
     pub fn new(health: i32) -> Self {
         Player { health, x: 0., y: 0. }
+    }
+
+    pub fn heal(
+        &mut self,
+        amount: i32,
+    ){
+        if self.health < 500 {
+            self.health +=amount;
+        }
     }
 
     pub fn take_damage(
@@ -151,6 +159,28 @@ impl Cooldowns {
         } else {
             None
         }
+    }
+    
+}
+
+#[derive(Resource)]
+pub struct Score {
+    pub enemies_killed: u32,
+}
+
+impl Score {
+    pub fn new() -> Self {
+        Score {
+            enemies_killed: 0,
+        }
+    }
+
+    pub fn increment(&mut self) {
+        self.enemies_killed += 1;
+    }
+
+    pub fn get_enemies_killed(&self) -> u32 {
+        self.enemies_killed
     }
 }
 #[derive(Clone, Copy, Default, Eq, PartialEq, Debug, Hash, States)]

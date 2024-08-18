@@ -3,7 +3,6 @@ mod systems;
 mod events;
 
 use bevy::prelude::*;
-use bevy_quickmenu::*;
 use components::*;
 use systems::*;
 use events::*;
@@ -28,7 +27,6 @@ fn main() {
                 move_entities.run_if(in_state(GameState::Running)),
                 display_score.run_if(in_state(GameState::Running)),
                 check_collisions.run_if(in_state(GameState::Running)),
-                handle_collisions.run_if(in_state(GameState::Running)),
                 spawn_enemies_over_time.run_if(in_state(GameState::Running)),
                 camera_follow_player.run_if(in_state(GameState::Running)),
                 update_mouse_position.run_if(in_state(GameState::Running)),

@@ -2,13 +2,12 @@ use bevy::input::keyboard::Key;
 use bevy::input::mouse::{self, MouseMotion};
 use bevy::prelude::*;
 use bevy::sprite::MaterialMesh2dBundle;
-use bevy_quickmenu::*;
 use bevy::utils::HashSet;
 use bevy::window::PrimaryWindow;
 use bevy::ui::{AlignItems, JustifyContent, Val, UiRect, Style};
 use crate::components::{Direction, DirectionComponent, MovementSpeed, CollisionBox, Player, Tag, EnemySpawnTimer};
-use crate::events::{CollisionEvent, Score};
-use crate::{Ability, CooldownUi, Cooldowns, CurrentGameState, GameState, HealthText, Invulnerability, Lifetime, MousePosition, PauseMenu, PointMarker, Points, ScoreText};
+use crate::events::{CollisionEvent};
+use crate::{Ability, CooldownUi, Cooldowns, GameState, HealthText, Invulnerability, Lifetime, MousePosition, PauseMenu, PointMarker, Points, ScoreText, Score};
 use crate::Line;
 use rand::Rng;
 use std::f32::consts::PI;
@@ -106,31 +105,9 @@ pub fn camera_follow_player(
     }
 }
 
-
-pub fn handle_collisions(
-    mut commands: Commands,
-    mut collision_events: EventReader<CollisionEvent>,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut score: ResMut<Score>, // Access the Score resource
-) {
-    let mut entities_to_despawn = Vec::new(); // Collect entities to despawn after the loop
-    collision_events
-        .read() // Use par_read to access events in a parallel-safe manner
-        .for_each(|CollisionEvent(entity)| {
-            if keyboard_input.pressed(KeyCode::KeyR) {
-                entities_to_despawn.push(*entity); // Mark the entity for despawning + needs to be this way to avoid segfault
-                enemy_killed(&mut score);
-            }
-        });
-        for entity in entities_to_despawn {
-            if commands.get_entity(entity).is_some() { //make sure it exists
-                commands.entity(entity).despawn(); //despawn all
-            }
-        }
-}
-
-pub fn enemy_killed(score: &mut ResMut<Score>) {
+pub fn enemy_killed(score: &mut ResMut<Score>, mut player: &mut Player) {
     score.increment();
+    player.heal(1);
     println!("Score: {}", score.get_enemies_killed());
 }
 
@@ -155,7 +132,7 @@ pub fn check_collisions(
         let enemy_max_x = transform.translation.x + bounding_box.width / 2.0;
         let enemy_min_y = transform.translation.y - bounding_box.height / 2.0;
         let enemy_max_y = transform.translation.y + bounding_box.height / 2.0;
-
+        for (entity, mut player, player_box, player_transform, mut invulnerability_option) in player_query.iter_mut() {
         for (point_entity, point_transform) in points_query.iter() {
             let point = Vec2::new(point_transform.translation.x, point_transform.translation.y);
 
@@ -165,14 +142,15 @@ pub fn check_collisions(
                 && point.y < enemy_max_y
             {
                 // Call the kill_enemy function
-                score.increment();
+                enemy_killed(&mut score,&mut player);
+                
 
                 // Despawn the enemy
                 commands.entity(enemy_entity).despawn();
                 break;
             }
         }
-    }
+    }}
     for (attack_entity, attack_transform, attack_box) in line_query.iter() {
         let attack_min_x = attack_transform.translation.x - attack_box.width / 2.0;
         let attack_max_x = attack_transform.translation.x + attack_box.width / 2.0;
