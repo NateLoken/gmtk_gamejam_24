@@ -1,9 +1,9 @@
 use bevy::prelude::*;
-use crate::components::{Ability, Cooldowns, CollisionBox, Invulnerability, Lifetime, Line, MousePosition, PointMarker, Points, Player, Tag};
+use crate::components::{Cooldowns, CollisionBox, Invulnerability, Lifetime, Line, PointMarker, Points, Player};
 use crate::events::{CollisionEvent, Score};
 use std::f32::consts::PI;
 
-use crate::{EnemyCount, GameTextures, ENEMY_SPRITE, PLAYER_SPRITE};
+use crate::{EnemyCount, GameTextures, MouseCoords, ENEMY_SPRITE, LINE_SPRITE, PLAYER_SPRITE};
 // Systems Implementation
 
 pub fn camera_follow_player(
@@ -175,7 +175,7 @@ pub fn check_collisions(
 // System to update the MousePosition resource whenever the mouse moves
 pub fn update_mouse_position(
     q_windows: Query<&Window>,
-    mut mouse_position: ResMut<MousePosition>,
+    mut mouse_position: ResMut<MouseCoords>,
     camera_query: Query<(&GlobalTransform, &OrthographicProjection), With<Camera2d>>,
 ) {
     let window = q_windows.single();
@@ -203,91 +203,91 @@ pub fn update_mouse_position(
 }
 
 // System to update the Player's position whenever the player's position changes
-pub fn update_player_position(
-    mut player_query: Query<(&Transform, &mut Player)>,
-) {
-    if let Ok((transform, mut player)) = player_query.get_single_mut() {
-        player.update_position(transform);
-
-       // println!("Player Position in World: ({}, {})", player.x, player.y);
-    }
-}
+//pub fn update_player_position(
+//    mut player_query: Query<(&Transform, &mut Player)>,
+//) {
+//    if let Ok((transform, mut player)) = player_query.get_single_mut() {
+//        player.update_position(transform);
+//
+//       // println!("Player Position in World: ({}, {})", player.x, player.y);
+//    }
+//}
     
-pub fn use_ability(
-    commands: Commands,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut cooldown_query: Query<&mut Cooldowns>,
-    mut player_query: Query<(Entity, &mut Transform, &mut Player)>,
-    mouse_position: Res<MousePosition>,
-    asset_server: Res<AssetServer>,
-    points: ResMut<Points>,
-) {
-    if let Ok(mut cooldowns) = cooldown_query.get_single_mut() {
-        if let Ok((player_entity, mut transform, player)) = player_query.get_single_mut() {
-        let player_position = Vec2::new(transform.translation.x, transform.translation.y);
-
-        // Line-drawing ability (mapped to the F key)
-        if keyboard_input.just_pressed(KeyCode::KeyE) {
-            if cooldowns.is_ready(Ability::Ranged) {
-                ranged_attack(
-                    commands,
-                    player_position,
-                    Vec2::new(mouse_position.x, mouse_position.y),
-                    asset_server,
-                );
-                cooldowns.reset(Ability::Ranged);
-            } else {
-                println!("Line ability is on cooldown!");
-            }
-        }
-        // Line-drawing ability (mapped to the F key)
-        else if keyboard_input.just_pressed(KeyCode::KeyF) {
-            if cooldowns.is_ready(Ability::Dash) {
-                dash_attack(
-                    commands,
-                    player_position,
-                    Vec2::new(mouse_position.x, mouse_position.y),
-                    asset_server,
-                    player_query,
-                );
-                cooldowns.reset(Ability::Dash);
-            } else {
-                println!("Dash is on cooldown!");
-            }
-        }
-        // Arc-drawing ability (mapped to the E key)
-        else if keyboard_input.just_pressed(KeyCode::KeyQ) {
-            if cooldowns.is_ready(Ability::Attack) {  
-                draw_arc_ability(
-                    commands,
-                    player_position,
-                    Vec2::new(mouse_position.x, mouse_position.y),
-                    asset_server,
-                    points,
-                );
-                cooldowns.reset(Ability::Attack);
-            } else {
-                println!("Arc ability is on cooldown!");
-            }
-        }
-        // Circle-drawing ability (mapped to the T key)
-        else if keyboard_input.just_pressed(KeyCode::KeyT) {
-            if cooldowns.is_ready(Ability::Aoe) {  
-                draw_circle_ability(
-                    commands,
-                    player_position,
-                    asset_server,
-                    points,
-                );
-                cooldowns.reset(Ability::Aoe);
-            } else {
-                println!("Circle ability is on cooldown!");
-            }
-        }
-        // Other abilities can be added here similarly...
-    }
-}
-}
+//pub fn use_ability(
+//    commands: Commands,
+//    keyboard_input: Res<ButtonInput<KeyCode>>,
+//    mut cooldown_query: Query<&mut Cooldowns>,
+//    mut player_query: Query<(Entity, &mut Transform, &mut Player)>,
+//    mouse_position: Res<MousePosition>,
+//    asset_server: Res<AssetServer>,
+//    points: ResMut<Points>,
+//) {
+//    if let Ok(mut cooldowns) = cooldown_query.get_single_mut() {
+//        if let Ok((player_entity, mut transform, player)) = player_query.get_single_mut() {
+//        let player_position = Vec2::new(transform.translation.x, transform.translation.y);
+//
+//        // Line-drawing ability (mapped to the F key)
+//        if keyboard_input.just_pressed(KeyCode::KeyE) {
+//            if cooldowns.is_ready(Ability::Ranged) {
+//                ranged_attack(
+//                    commands,
+//                    player_position,
+//                    Vec2::new(mouse_position.x, mouse_position.y),
+//                    asset_server,
+//                );
+//                cooldowns.reset(Ability::Ranged);
+//            } else {
+//                println!("Line ability is on cooldown!");
+//            }
+//        }
+//        // Line-drawing ability (mapped to the F key)
+//        else if keyboard_input.just_pressed(KeyCode::KeyF) {
+//            if cooldowns.is_ready(Ability::Dash) {
+//                dash_attack(
+//                    commands,
+//                    player_position,
+//                    Vec2::new(mouse_position.x, mouse_position.y),
+//                    asset_server,
+//                    player_query,
+//                );
+//                cooldowns.reset(Ability::Dash);
+//            } else {
+//                println!("Dash is on cooldown!");
+//            }
+//        }
+//        // Arc-drawing ability (mapped to the E key)
+//        else if keyboard_input.just_pressed(KeyCode::KeyQ) {
+//            if cooldowns.is_ready(Ability::Attack) {  
+//                draw_arc_ability(
+//                    commands,
+//                    player_position,
+//                    Vec2::new(mouse_position.x, mouse_position.y),
+//                    asset_server,
+//                    points,
+//                );
+//                cooldowns.reset(Ability::Attack);
+//            } else {
+//                println!("Arc ability is on cooldown!");
+//            }
+//        }
+//        // Circle-drawing ability (mapped to the T key)
+//        else if keyboard_input.just_pressed(KeyCode::KeyT) {
+//            if cooldowns.is_ready(Ability::Aoe) {  
+//                draw_circle_ability(
+//                    commands,
+//                    player_position,
+//                    asset_server,
+//                    points,
+//                );
+//                cooldowns.reset(Ability::Aoe);
+//            } else {
+//                println!("Circle ability is on cooldown!");
+//            }
+//        }
+//        // Other abilities can be added here similarly...
+//    }
+//}
+//}
 
 
 fn ranged_attack(
@@ -328,52 +328,52 @@ fn ranged_attack(
     });
 }
 
-fn dash_attack(
-    mut commands: Commands,
-    player_position: Vec2,
-    mouse_position: Vec2,
-    asset_server: Res<AssetServer>,
-    mut player_query: Query<(Entity, &mut Transform, &mut Player)>,
-) {
-    if let Ok((player_entity, mut transform, mut player)) = player_query.get_single_mut() {
-        let direction = mouse_position - player_position;
-        let length = direction.length();
-
-        // Calculate the midpoint between the player and the mouse
-        let midpoint = player_position + direction / 2.0;
-
-        // Correct rotation angle
-        let angle = direction.y.atan2(direction.x);
-
-        // Load a small texture for the line (e.g., 1x1 pixel)
-        let line_texture_handle = asset_server.load("red_line.png");
-
-        // Spawn the line as a sprite with a bounding box and a lifetime
-        commands.spawn(SpriteBundle {
-            texture: line_texture_handle,
-            transform: Transform {
-                translation: Vec3::new(midpoint.x, midpoint.y, 0.0), // Center the line between the player and the mouse
-                rotation: Quat::from_rotation_z(angle),   // Rotate to face the mouse position
-                scale: Vec3::new(length, 2.0, 1.0),       // Scale to the length, and set the thickness
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .insert(Line)
-        .insert(CollisionBox::new(length, 50.0)) // Add a bounding box for collision detection
-        .insert(Lifetime {
-            timer: Timer::from_seconds(0.1, TimerMode::Once),
-        });
-
-        // Make the player invulnerable for 0.5 seconds
-        commands.entity(player_entity).insert(Invulnerability {
-            timer: Timer::from_seconds(0.5, TimerMode::Once),
-        });
-
-        player.move_to(mouse_position.x, mouse_position.y, &mut transform);
-    }
-    
-}
+//fn dash_attack(
+//    mut commands: Commands,
+//    player_position: Vec2,
+//    mouse_position: Vec2,
+//    asset_server: Res<AssetServer>,
+//    mut player_query: Query<(Entity, &mut Transform, &mut Player)>,
+//) {
+//    if let Ok((player_entity, mut transform, mut player)) = player_query.get_single_mut() {
+//        let direction = mouse_position - player_position;
+//        let length = direction.length();
+//
+//        // Calculate the midpoint between the player and the mouse
+//        let midpoint = player_position + direction / 2.0;
+//
+//        // Correct rotation angle
+//        let angle = direction.y.atan2(direction.x);
+//
+//        // Load a small texture for the line (e.g., 1x1 pixel)
+//        let line_texture_handle = asset_server.load("red_line.png");
+//
+//        // Spawn the line as a sprite with a bounding box and a lifetime
+//        commands.spawn(SpriteBundle {
+//            texture: line_texture_handle,
+//            transform: Transform {
+//                translation: Vec3::new(midpoint.x, midpoint.y, 0.0), // Center the line between the player and the mouse
+//                rotation: Quat::from_rotation_z(angle),   // Rotate to face the mouse position
+//                scale: Vec3::new(length, 2.0, 1.0),       // Scale to the length, and set the thickness
+//                ..Default::default()
+//            },
+//            ..Default::default()
+//        })
+//        .insert(Line)
+//        .insert(CollisionBox::new(length, 50.0)) // Add a bounding box for collision detection
+//        .insert(Lifetime {
+//            timer: Timer::from_seconds(0.1, TimerMode::Once),
+//        });
+//
+//        // Make the player invulnerable for 0.5 seconds
+//        commands.entity(player_entity).insert(Invulnerability {
+//            timer: Timer::from_seconds(0.5, TimerMode::Once),
+//        });
+//
+//        player.move_to(mouse_position.x, mouse_position.y, &mut transform);
+//    }
+//    
+//}
 
 pub fn manage_invulnerability(
     time: Res<Time>,
@@ -524,12 +524,19 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let game_textures = GameTextures {
         player: asset_server.load(PLAYER_SPRITE),
         enemy: asset_server.load(ENEMY_SPRITE),
+        dash: asset_server.load(LINE_SPRITE),
     };
 
     let enemy_count = EnemyCount(0);
+
+    let mouse_coords = MouseCoords {
+        x: 0.,
+        y: 0.,
+    };
+
     commands.insert_resource(game_textures);
     commands.insert_resource(enemy_count);
     commands.insert_resource(Score::new());
-    commands.insert_resource(MousePosition::default());
+    commands.insert_resource(mouse_coords);
     commands.insert_resource(Points::default());
 }

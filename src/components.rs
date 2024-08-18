@@ -16,31 +16,25 @@ pub struct Line;
 #[derive(Component)]
 pub struct Player {
     pub health: i32,
-    pub x: f32,
-    pub y: f32,
 }
 
 impl Player {
-    pub fn new(health: i32) -> Self {
-        Player { health, x: 0., y: 0. }
-    }
-
     pub fn take_damage(&mut self, amount: i32) {
         self.health -= amount;
         println!("Player took {} damage, remaining health: {}", amount, self.health);
     }
 
-    pub fn update_position(&mut self, transform: &Transform) {
-        self.x = transform.translation.x;
-        self.y = transform.translation.y;
-    }
+    //pub fn update_position(&mut self, transform: &Transform) {
+    //    self.x = transform.translation.x;
+    //    self.y = transform.translation.y;
+    //}
 
-    pub fn move_to(&mut self, x: f32, y: f32, transform: &mut Transform) {
-        self.x = x;
-        self.y = y;
-        transform.translation.x = x;
-        transform.translation.y = y;
-    }
+    //pub fn move_to(&mut self, x: f32, y: f32, transform: &mut Transform) {
+    //    self.x = x;
+    //    self.y = y;
+    //    transform.translation.x = x;
+    //    transform.translation.y = y;
+    //}
 }
 
 #[derive(Component)]
@@ -94,15 +88,7 @@ impl Cooldowns {
     }
 }
 
-#[derive(Component)]
-pub struct MovementSpeed(pub f32);
-
-#[derive(Component)]
-pub struct DirectionComponent {
-    pub direction: Direction,
-}
-
-#[derive(Default, Resource)]
+#[derive(Resource)]
 pub struct MousePosition {
     pub x: f32,
     pub y: f32,
