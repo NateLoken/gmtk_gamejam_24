@@ -271,6 +271,29 @@ pub fn pathfind_towards_player(
     }
 }
 
+pub fn flicker_system(
+    time: Res<Time>,
+    mut query: Query<(&mut Sprite, &mut Invulnerability), With<Player>>,
+) {
+    for (mut sprite, mut invulnerability) in query.iter_mut() {
+        // Update the timer for invulnerability
+        invulnerability.timer.tick(time.delta());
+
+        // If the player is invulnerable, adjust the alpha value to create a flicker effect
+        if invulnerability.is_active() {
+            // Flicker by adjusting alpha value between 0.2 and 1.0
+            let flicker_phase = (invulnerability.timer.elapsed_secs() * 10.0).sin();
+            let new_alpha = 0.5 * flicker_phase.abs();
+
+            // Directly set the alpha using set_alpha
+            sprite.color.set_alpha(new_alpha);
+        } else {
+            // Ensure the player is fully visible when not invulnerable
+            sprite.color.set_alpha(1.0);
+        }
+    }
+}
+
 pub fn move_entities(
     time: Res<Time>,
     mut query: Query<(&DirectionComponent, &mut Transform, &MovementSpeed)>,
@@ -886,6 +909,10 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         SpriteBundle {
             texture: asset_server.load("../assets/blue_box.png"),
             transform: Transform::from_xyz(100., 0., 0.),
+            sprite: Sprite {
+                color: Color::srgba(1.0, 1.0, 1.0, 1.0), // Ensure the sprite starts fully visible
+                ..Default::default()
+            },
             ..default()
         },
         Direction::None,

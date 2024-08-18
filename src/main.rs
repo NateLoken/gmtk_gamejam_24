@@ -33,6 +33,7 @@ fn main() {
                 update_cooldowns_ui,
                 update_ui_text,
                 manage_invulnerability,
+                flicker_system,
             ),
         )
         .add_event::<CollisionEvent>()
