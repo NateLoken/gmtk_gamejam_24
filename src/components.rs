@@ -82,11 +82,6 @@ pub struct Points(pub Vec<Vec2>);
 
 
 #[derive(Component)]
-pub struct Tag {
-    pub name: String,
-}
-
-#[derive(Component)]
 pub struct Invulnerability {
     pub timer: Timer,
 }

@@ -19,18 +19,19 @@ const SPRITE_SCALE: f32 = 0.5;
 
 // Game Cosntants
 const TIME_STEP: f32 = 1. / 60.;
-const BASE_SPEED: f32 = 100.;
+const BASE_SPEED: f32 = 250.;
 const PLAYER_RADIUS: f32 = 500.;
 
 // Enemy Constants
-const MAX_ENEMIES: u32 = 5;
+const MAX_ENEMIES: u32 = 10;
+const ENEMY_SPEED: f32 = 150.;
 
 // Texture Resource
 #[derive(Resource)]
 struct GameTextures {
     player: Handle<Image>,
     enemy: Handle<Image>,
-    dash: Handle<Image>,
+    line: Handle<Image>,
 }
 
 // Mouse Resource

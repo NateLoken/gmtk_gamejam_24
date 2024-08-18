@@ -158,7 +158,7 @@ fn ranged_attack(
 
         commands.spawn(
             SpriteBundle {
-                texture: game_textures.dash.clone(),
+                texture: game_textures.line.clone(),
                 transform: Transform {
                     translation: Vec3::new(midpoint.x, midpoint.y, 0.),
                     rotation: Quat::from_rotation_z(angle),
@@ -193,7 +193,7 @@ fn dash_attack(
         let angle = direction.y.atan2(direction.x);
 
         commands.spawn(SpriteBundle {
-            texture: game_textures.dash.clone(),
+            texture: game_textures.line.clone(),
             transform: Transform {
                 translation: Vec3::new(midpoint.x, midpoint.y, 0.),
                 rotation: Quat::from_rotation_z(angle),
@@ -252,7 +252,7 @@ fn melee_attack(
 
                 commands.spawn(
                     SpriteBundle {
-                        texture: game_textures.dash.clone(),
+                        texture: game_textures.line.clone(),
                         transform: Transform {
                             translation: Vec3::new(arc_point.x, arc_point.y, 0.),
                             scale: Vec3::new(5., 5., 0.),
@@ -299,7 +299,7 @@ fn aoe_attack(
 
                 commands.spawn(
                     SpriteBundle {
-                        texture: game_textures.dash.clone(),
+                        texture: game_textures.line.clone(),
                         transform: Transform {
                             translation: Vec3::new(circle_point.x, circle_point.y, 0.),
                             scale: Vec3::new(5., 5., 0.),

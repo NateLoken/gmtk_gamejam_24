@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use crate::components::{Cooldowns, CollisionBox, Invulnerability, Lifetime, Line, PointMarker, Points, Player};
 use crate::events::{CollisionEvent, Score};
-use std::f32::consts::PI;
 
 use crate::{EnemyCount, GameTextures, MouseCoords, ENEMY_SPRITE, LINE_SPRITE, PLAYER_SPRITE};
 // Systems Implementation
@@ -61,6 +60,7 @@ pub fn handle_collisions(
     mut collision_events: EventReader<CollisionEvent>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut score: ResMut<Score>, // Access the Score resource
+    mut enemy_count: ResMut<EnemyCount>,
 ) {
     let mut entities_to_despawn = Vec::new(); // Collect entities to despawn after the loop
     collision_events
@@ -69,6 +69,7 @@ pub fn handle_collisions(
             if keyboard_input.pressed(KeyCode::KeyR) {
                 entities_to_despawn.push(*entity); // Mark the entity for despawning + needs to be this way to avoid segfault
                 enemy_killed(&mut score);
+                enemy_count.0 -= 1;
             }
         });
     for entity in entities_to_despawn {
@@ -261,7 +262,7 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let game_textures = GameTextures {
         player: asset_server.load(PLAYER_SPRITE),
         enemy: asset_server.load(ENEMY_SPRITE),
-        dash: asset_server.load(LINE_SPRITE),
+        line: asset_server.load(LINE_SPRITE),
     };
 
     let enemy_count = EnemyCount(0);

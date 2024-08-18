@@ -3,7 +3,7 @@ use std::{f32::consts::PI, time::Duration};
 use bevy::{prelude::*, time::common_conditions::on_timer};
 use rand::Rng;
 
-use crate::{components::{CollisionBox, Enemy, Player, Velocity}, EnemyCount, GameTextures, BASE_SPEED, PLAYER_RADIUS, SPRITE_SCALE, SPRITE_SIZE, MAX_ENEMIES, TIME_STEP, };
+use crate::{components::{CollisionBox, Enemy, Player, Velocity}, EnemyCount, GameTextures, ENEMY_SPEED, MAX_ENEMIES, PLAYER_RADIUS, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
 pub struct EnemyPlugin;
 
 impl Plugin for EnemyPlugin {
@@ -56,31 +56,8 @@ fn player_tracking_system(
     if let Ok(player_transform) = player_query.get_single() {
         for (mut velocity, enemy_transform) in enemy_query.iter_mut() {
             let direction_vector = (player_transform.translation - enemy_transform.translation).normalize();
-            velocity.x = if direction_vector.x < 0. {
-                if direction_vector.y > 0. || direction_vector.y < 0. {
-                    -1. / 2.
-                } else {
-                    -1.
-                }
-            } else if direction_vector.x > 0. {
-                if direction_vector.y > 0. || direction_vector.y < 0. {
-                    1. / 2.
-                } else {
-                    1.
-                }
-            } else {
-                0.
-            };
-
-            velocity.y = if direction_vector.y < 0. {
-                -1.
-            } else if direction_vector.y > 0. {
-                1.
-            } else {
-                0.
-            };
-            println!("Enemy X Velocity {}", velocity.x);
-            println!("Enemy Y Velocity {}", velocity.y);
+            velocity.x = direction_vector.x;
+            velocity.y = direction_vector.y;
         }
     }
 }
@@ -91,7 +68,7 @@ fn enemy_movement_system(
     for (velocity, mut transform) in query.iter_mut() {
        let translation = &mut transform.translation;
 
-       translation.x += velocity.x * TIME_STEP * BASE_SPEED;
-       translation.y += velocity.y * TIME_STEP * BASE_SPEED;
+       translation.x += velocity.x * TIME_STEP * ENEMY_SPEED;
+       translation.y += velocity.y * TIME_STEP * ENEMY_SPEED;
     }
 }
