@@ -26,7 +26,7 @@ const BASE_SPEED: f32 = 100.;
 const PLAYER_RADIUS: f32 = 500.;
 
 // Enemy Constants
-const MAX_ENEMIES: u32 = 5;
+const MAX_ENEMIES: u32 = 100;
 
 // Texture Resource
 #[derive(Resource)]
