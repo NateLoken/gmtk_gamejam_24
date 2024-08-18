@@ -37,6 +37,7 @@ impl Player {
         commands: &mut Commands,
         invulnerability_option: Option<&mut Invulnerability>,
         invulnerability_duration: f32,
+        exit: &mut EventWriter<AppExit>, 
     ) {
         if let Some(invulnerability) = invulnerability_option {
             if invulnerability.is_active() {
@@ -55,6 +56,11 @@ impl Player {
         // Apply damage to the player
         self.health -= amount;
         println!("Player took {} damage, remaining health: {}", amount, self.health);
+
+        if self.health <= 0 {
+            println!("Player has died. Exiting the game.");
+            exit.send(AppExit::Success);
+        }
     }
 
     pub fn update_position(&mut self, transform: &Transform) {
@@ -107,7 +113,7 @@ pub enum Ability {
     Aoe,
 }
 
-use std::collections::HashMap;
+use std::{collections::HashMap, process::exit};
 
 #[derive(Component)]
 pub struct Cooldowns {

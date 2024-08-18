@@ -146,6 +146,7 @@ pub fn check_collisions(
     mut points: ResMut<Points>,  
     mut despawned_entities: Local<HashSet<Entity>>,  // Track despawned entities
     line_query: Query<(Entity, &Transform, &CollisionBox), With<Line>>,
+    mut exit: EventWriter<AppExit>, // Add the AppExit event writer
 ) {
     for (enemy_entity, transform, bounding_box) in other_entities_query.iter() {
         let enemy_min_x = transform.translation.x - bounding_box.width / 2.0;
@@ -199,17 +200,31 @@ pub fn check_collisions(
             }
         }
     }
+
+    
     for (entity, mut player, player_box, player_transform, mut invulnerability_option) in player_query.iter_mut() {
+        let player_min_x = player_transform.translation.x - player_box.width / 2.0;
+        let player_max_x = player_transform.translation.x + player_box.width / 2.0;
+        let player_min_y = player_transform.translation.y - player_box.height / 2.0;
+        let player_max_y = player_transform.translation.y + player_box.height / 2.0;
+
+        if let Some(ref mut invulnerability) = invulnerability_option {
+            if invulnerability.is_active() {
+                continue; // Skip damage application if invulnerable
+            }
+        }
+
         for (enemy_entity, enemy_transform, enemy_box) in other_entities_query.iter() {
             let enemy_min_x = enemy_transform.translation.x - enemy_box.width / 2.0;
             let enemy_max_x = enemy_transform.translation.x + enemy_box.width / 2.0;
             let enemy_min_y = enemy_transform.translation.y - enemy_box.height / 2.0;
             let enemy_max_y = enemy_transform.translation.y + enemy_box.height / 2.0;
 
-            let player_min_x = player_transform.translation.x - player_box.width / 2.0;
-            let player_max_x = player_transform.translation.x + player_box.width / 2.0;
-            let player_min_y = player_transform.translation.y - player_box.height / 2.0;
-            let player_max_y = player_transform.translation.y + player_box.height / 2.0;
+            if player_max_x > enemy_min_x
+                && player_min_x < enemy_max_x
+                && player_max_y > enemy_min_y
+                && player_min_y < enemy_max_y
+            {
 
             if player_max_x > enemy_min_x
                 && player_min_x < enemy_max_x
@@ -217,10 +232,11 @@ pub fn check_collisions(
                 && player_min_y < enemy_max_y
             {
                 // Handle collision, but only if player is not invulnerable
-                player.take_damage(100, entity, &mut commands, invulnerability_option.as_deref_mut(), 0.3);
+                player.take_damage(100, entity, &mut commands, invulnerability_option.as_deref_mut(), 0.3, &mut exit);
             }
         }
     }
+}
 }
 
 
@@ -807,5 +823,4 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     commands.insert_resource(EnemySpawnTimer::new(10, 750.)); 
 }
-
 
