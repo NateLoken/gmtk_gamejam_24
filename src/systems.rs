@@ -7,7 +7,7 @@ use bevy::window::PrimaryWindow;
 use bevy::ui::{AlignItems, JustifyContent, Val, UiRect, Style};
 use crate::components::{Ability, CooldownUi, HealthText, Line, Invulnerability, ScoreText, Score, Points, PointMarker, PauseMenu, MousePosition , Lifetime, Cooldowns, DirectionComponent, MovementSpeed, CollisionBox, Player, Tag};
 use crate::events::{CollisionEvent};
-use crate::{GameState};
+use crate::{GameState, MAP_SPIRITE};
 use rand::Rng;
 use std::f32::consts::PI;
 
@@ -508,6 +508,7 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut state: 
         player: asset_server.load(PLAYER_SPRITE),
         enemy: asset_server.load(ENEMY_SPRITE),
         dash: asset_server.load(LINE_SPRITE),
+        map: asset_server.load(MAP_SPIRITE),
     };
 
     let enemy_count = EnemyCount(0);
@@ -516,6 +517,18 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut state: 
         x: 0.,
         y: 0.,
     };
+
+    commands.spawn((
+            SpriteBundle {
+                texture: game_textures.map.clone(),
+                transform: Transform { 
+                    //translation: Vec3::new(0., SPRITE_SIZE.1 / 2. + 5., 10.),
+                    scale: Vec3::new(4., 4., 0.),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+    ));
 
     commands.insert_resource(game_textures);
     commands.insert_resource(enemy_count);

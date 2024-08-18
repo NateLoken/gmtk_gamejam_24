@@ -25,7 +25,7 @@ fn player_spawn_system(
                 texture: game_textures.player.clone(),
                 transform: Transform { 
                     translation: Vec3::new(0., SPRITE_SIZE.1 / 2. + 5., 10.),
-                    scale: Vec3::new(SPRITE_SCALE, SPRITE_SCALE, 0.),
+                    scale: Vec3::new(SPRITE_SCALE/2.5, SPRITE_SCALE/2.5, 0.),
                     ..Default::default()
                 },
                 ..Default::default()
