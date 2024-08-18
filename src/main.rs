@@ -31,6 +31,7 @@ fn main() {
                 update_cooldowns, 
                 use_ability.before(update_cooldowns_ui),
                 update_cooldowns_ui,
+                update_ui_text,
                 manage_invulnerability,
             ),
         )

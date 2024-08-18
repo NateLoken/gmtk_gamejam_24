@@ -170,6 +170,12 @@ pub struct MousePosition {
 #[derive(Default, Resource)]
 pub struct Points(pub Vec<Vec2>);
 
+#[derive(Component)]
+pub struct HealthText;
+
+#[derive(Component)]
+pub struct ScoreText;
+
 
 #[derive(Component)]
 pub struct Tag {

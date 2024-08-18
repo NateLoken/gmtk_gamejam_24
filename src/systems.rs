@@ -6,7 +6,7 @@ use bevy::window::PrimaryWindow;
 use bevy::ui::{AlignItems, JustifyContent, Val, UiRect, Style};
 use crate::components::{Direction, DirectionComponent, MovementSpeed, CollisionBox, Player, Tag, EnemySpawnTimer};
 use crate::events::{CollisionEvent, Score};
-use crate::{Ability, CooldownUi, Cooldowns, Invulnerability, Lifetime, MousePosition, PointMarker, Points};
+use crate::{Ability, CooldownUi, Cooldowns, HealthText, Invulnerability, Lifetime, MousePosition, PointMarker, Points, ScoreText};
 use crate::Line;
 use rand::Rng;
 use std::f32::consts::PI;
@@ -232,7 +232,7 @@ pub fn check_collisions(
                 && player_min_y < enemy_max_y
             {
                 // Handle collision, but only if player is not invulnerable
-                player.take_damage(100, entity, &mut commands, invulnerability_option.as_deref_mut(), 0.3, &mut exit);
+                player.take_damage(100, entity, &mut commands, invulnerability_option.as_deref_mut(), 0.5, &mut exit);
             }
         }
     }
@@ -734,6 +734,22 @@ pub fn update_cooldowns_ui(
     }
 }
 
+pub fn update_ui_text(
+    player_query: Query<&Player>,
+    score: Res<Score>,
+    mut text_query: Query<(&mut Text, Option<&HealthText>, Option<&ScoreText>)>,
+) {
+    if let Ok(player) = player_query.get_single() {
+        for (mut text, health_text, score_text) in text_query.iter_mut() {
+            if health_text.is_some() {
+                text.sections[0].value = format!("Health: {}", player.health);
+            } else if score_text.is_some() {
+                text.sections[0].value = format!("Score: {}", score.get_enemies_killed());
+            }
+        }
+    }
+}
+
 pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
     commands.spawn(
@@ -753,61 +769,119 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     );
     commands.spawn(NodeBundle {
         style: Style {
-            width: Val::Percent(100.0),
-            height: Val::Px(50.0),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
+            width: Val::Percent(100.0), 
+            height: Val::Percent(100.0),
+            position_type: PositionType::Relative,
             ..Default::default()
         },
-        background_color: Color::srgba(0.15, 0.15, 0.15, 0.9).into(),
         ..Default::default()
     })
-    .insert(CooldownUi)
     .with_children(|parent| {
-        // Create a UI element for each ability
-        let abilities = [
-            Ability::Attack,
-            Ability::Ranged,
-            Ability::Dash,
-            Ability::Aoe,
-        ];
-
-        for ability in abilities.iter() {
-            let ability_name = match ability {
-                Ability::Attack => "Attack",
-                Ability::Ranged => "Ranged",
-                Ability::Dash => "Dash",
-                Ability::Aoe => "Bladestorm",
-            };
-
-            parent.spawn(NodeBundle {
-                style: Style {
-                    width: Val::Percent(20.0),
-                    height: Val::Px(100.0),                    
-                    margin: UiRect::all(Val::Px(5.0)),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    ..Default::default()
-                },
-                background_color: Color::srgba(0.9, 0.9, 0.9, 0.5).into(), // Use `background_color` instead of `color`
+        // Health and Score container
+        parent.spawn(NodeBundle {
+            style: Style {
+                position_type: PositionType::Absolute,
+                top: Val::Px(10.0),
+                left: Val::Px(10.0),
+                flex_direction: FlexDirection::Column, // Stack vertically
+                margin: UiRect::new(Val::Px(0.0), Val::Px(0.0), Val::Px(50.0), Val::Px(0.0)),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            // Health Text
+            parent.spawn(TextBundle {
+                text: Text::from_section(
+                    "Health: 500",
+                    TextStyle {
+                        font: asset_server.load("FiraSans-Bold.ttf"),
+                        font_size: 40.0,
+                        color: Color::WHITE,
+                    },
+                ),
                 ..Default::default()
             })
-            .with_children(|parent| {
-                parent.spawn(TextBundle {
-                    text: Text::from_section(
-                        format!("{}: {:.1}s", ability_name.to_string(), 0.0.to_string()), // Ability name and placeholder cooldown
-                        TextStyle {
-                            font: asset_server.load("FiraSans-Bold.ttf"),
-                            font_size: 30.0,
-                            color: Color::BLACK,
-                        },
-                    ), // Remove the extra argument
+            .insert(HealthText);
+
+            // Score Text
+            parent.spawn(TextBundle {
+                text: Text::from_section(
+                    "Score: 0",
+                    TextStyle {
+                        font: asset_server.load("FiraSans-Bold.ttf"),
+                        font_size: 40.0,
+                        color: Color::WHITE,
+                    },
+                ),
+                style: Style {
+                    //margin: UiRect::new(Val::Px(0.0), Val::Px(0.0), Val::Px(100.0), Val::Px(0.0)),
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .insert(ScoreText);
+        });
+
+        // Ability boxes container at the bottom
+        parent.spawn(NodeBundle {
+            style: Style {
+                width: Val::Percent(100.0), 
+                height: Val::Px(60.0), // 60px high for the ability boxes
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(0.0), // Position at the bottom of the screen
+                justify_content: JustifyContent::SpaceAround, // Evenly space ability boxes
+                align_items: AlignItems::Center, // Center the boxes vertically within the container
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            let abilities = [
+                Ability::Attack,
+                Ability::Ranged,
+                Ability::Dash,
+                Ability::Aoe,
+            ];
+
+            for ability in abilities.iter() {
+                let ability_name = match ability {
+                    Ability::Attack => "Attack",
+                    Ability::Ranged => "Ranged",
+                    Ability::Dash => "Dash",
+                    Ability::Aoe => "Bladestorm",
+                };
+
+                parent.spawn(NodeBundle {
+                    style: Style {
+                        width: Val::Percent(20.0),
+                        height: Val::Px(50.0), // 50px height for each ability box
+                        margin: UiRect::all(Val::Px(5.0)),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..Default::default()
+                    },
+                    background_color: Color::srgba(0.9, 0.9, 0.9, 0.5).into(),
                     ..Default::default()
                 })
-                .insert(CooldownUi);
-            });
-        }
+                .with_children(|parent| {
+                    parent.spawn(TextBundle {
+                        text: Text::from_section(
+                            format!("{}: {:.1}s", ability_name, 0.0), // Ability name and placeholder cooldown
+                            TextStyle {
+                                font: asset_server.load("FiraSans-Bold.ttf"),
+                                font_size: 30.0,
+                                color: Color::BLACK,
+                            },
+                        ),
+                        ..Default::default()
+                    })
+                    .insert(CooldownUi);
+                });
+            }
+        });
     });
+
     commands.spawn((
         SpriteBundle {
             texture: asset_server.load("../assets/blue_box.png"),
