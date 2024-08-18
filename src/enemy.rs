@@ -3,13 +3,13 @@ use std::{f32::consts::PI, time::Duration};
 use bevy::{prelude::*, time::common_conditions::on_timer};
 use rand::Rng;
 
-use crate::{components::{CollisionBox, Enemy, Player, Velocity}, EnemyCount, GameTextures, BASE_SPEED, PLAYER_RADIUS, SPRITE_SCALE, SPRITE_SIZE, MAX_ENEMIES, TIME_STEP, };
+use crate::{components::{CollisionBox, Enemy, GameState, Player, Velocity}, EnemyCount, GameTextures, BASE_SPEED, MAX_ENEMIES, PLAYER_RADIUS, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
 pub struct EnemyPlugin;
 
 impl Plugin for EnemyPlugin {
    fn build(&self, app: &mut App) {
-       app.add_systems(Update, enemy_spawn_system.run_if(on_timer(Duration::from_secs(1))))
-           .add_systems(FixedUpdate, (player_tracking_system, enemy_movement_system));
+       app.add_systems(Update, enemy_spawn_system.run_if(on_timer(Duration::from_secs(1))).run_if(in_state(GameState::Running)))
+           .add_systems(FixedUpdate, (player_tracking_system, enemy_movement_system).run_if(in_state(GameState::Running)));
    } 
 }
 
@@ -79,8 +79,8 @@ fn player_tracking_system(
             } else {
                 0.
             };
-            println!("Enemy X Velocity {}", velocity.x);
-            println!("Enemy Y Velocity {}", velocity.y);
+            // println!("Enemy X Velocity {}", velocity.x);
+            // println!("Enemy Y Velocity {}", velocity.y);
         }
     }
 }

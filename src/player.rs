@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use crate::{GameTextures, MouseCoords, BASE_SPEED, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
-use crate::components::{Ability, CollisionBox, Cooldowns, Invulnerability, Lifetime, Line, Player, PointMarker, Points, Velocity}; 
+use crate::components::{Ability, CollisionBox, Cooldowns, GameState, Invulnerability, Lifetime, Line, Player, PointMarker, Points, Velocity}; 
 use bevy::prelude::*;
 
 pub struct PlayerPlugin;
@@ -12,7 +12,7 @@ impl Plugin for PlayerPlugin {
             .add_systems(FixedUpdate, (
                     player_movement_system, 
                     player_keyboard_event_system,
-                    ability_system,));
+                    ability_system,).run_if(in_state(GameState::Running)));
     }
 }
 
@@ -32,7 +32,7 @@ fn player_spawn_system(
             },
     ))
         .insert(CollisionBox::new(SPRITE_SIZE.0 * SPRITE_SCALE, SPRITE_SIZE.1 * SPRITE_SCALE))
-        .insert(Player { health: 500 })
+        .insert(Player { health: 500, x:0.0, y:0.0 })
         .insert(Velocity { x: 0., y: 0. })
         .insert(Cooldowns::new());  // Initialize cooldowns for abilities)
 }
@@ -148,12 +148,19 @@ fn ranged_attack(
         let player_position = Vec2::new(transform.translation.x, transform.translation.y);
         let mouse_position = Vec2::new(mouse_coords.x, mouse_coords.y);
 
-        let direction = mouse_position - player_position;
+         // Calculate direction from player to mouse
+        let direction = (mouse_position - player_position).normalize();
+        
+        // Set the desired line length
+        let line_length = 1100.0;
 
-        let length = direction.length();
+        // Calculate the endpoint of the line
+        let end_point = player_position + direction * line_length;
 
-        let midpoint = player_position + direction / 2.;
+        // Calculate the midpoint of the line for positioning the sprite
+        let midpoint = (player_position + end_point) / 2.0;
 
+        // Calculate the angle for proper rotation
         let angle = direction.y.atan2(direction.x);
 
         commands.spawn(
@@ -162,14 +169,14 @@ fn ranged_attack(
                 transform: Transform {
                     translation: Vec3::new(midpoint.x, midpoint.y, 0.),
                     rotation: Quat::from_rotation_z(angle),
-                    scale: Vec3::new(length, SPRITE_SCALE, 0.),
+                    scale: Vec3::new(1100.0, SPRITE_SCALE, 0.),
                     ..Default::default()
                 },
                 ..Default::default()
             }
         )
             .insert(Line)
-            .insert(CollisionBox::new(length, SPRITE_SIZE.0))
+            .insert(CollisionBox::new(1100.0, 100.0))
             .insert(Lifetime {
                 timer: Timer::from_seconds(0.1, TimerMode::Once)
             });
@@ -231,10 +238,11 @@ fn melee_attack(
         let direction = (mouse_position - player_position).normalize();
         let start_angle = direction.y.atan2(direction.x);
 
-        let max_radius = 250.;
-        let theta = 0.0725;
-        let arc_span = PI / 2.;
-        let radius_step = 10.;
+        let max_radius = 250.0; // Max radius for the arc
+        let theta = 0.0725; // Smaller theta for finer increments
+        let arc_span = PI / 2.0; // 90 degrees in radians
+        let radius_step = 10.0; // Distance between each concentric arc
+
 
         let arc_segments = (arc_span / theta) as i32;
 
@@ -279,7 +287,7 @@ fn aoe_attack(
     if let Ok((_, transform)) = player_query.get_single() {
         let player_position = Vec2::new(transform.translation.x, transform.translation.y);
 
-        let max_radius = 350.;
+        let max_radius = 300.;
         let theta = 0.0725;
         let total_angle = 2.0 * PI;
         let radius_step = 10.;

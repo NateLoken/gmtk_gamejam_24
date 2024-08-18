@@ -1,6 +1,14 @@
+use bevy::input::keyboard::Key;
+use bevy::input::mouse::{self, MouseMotion};
 use bevy::prelude::*;
-use crate::components::{Cooldowns, CollisionBox, Invulnerability, Lifetime, Line, PointMarker, Points, Player};
-use crate::events::{CollisionEvent, Score};
+use bevy::sprite::MaterialMesh2dBundle;
+use bevy::utils::HashSet;
+use bevy::window::PrimaryWindow;
+use bevy::ui::{AlignItems, JustifyContent, Val, UiRect, Style};
+use crate::components::{Ability, CooldownUi, HealthText, Line, Invulnerability, ScoreText, Score, Points, PointMarker, PauseMenu, MousePosition , Lifetime, Cooldowns, DirectionComponent, MovementSpeed, CollisionBox, Player, Tag};
+use crate::events::{CollisionEvent};
+use crate::{GameState};
+use rand::Rng;
 use std::f32::consts::PI;
 
 use crate::{EnemyCount, GameTextures, MouseCoords, ENEMY_SPRITE, LINE_SPRITE, PLAYER_SPRITE};
@@ -55,31 +63,9 @@ pub fn camera_follow_player(
     }
 }
 
-
-pub fn handle_collisions(
-    mut commands: Commands,
-    mut collision_events: EventReader<CollisionEvent>,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut score: ResMut<Score>, // Access the Score resource
-) {
-    let mut entities_to_despawn = Vec::new(); // Collect entities to despawn after the loop
-    collision_events
-        .read() // Use par_read to access events in a parallel-safe manner
-        .for_each(|CollisionEvent(entity)| {
-            if keyboard_input.pressed(KeyCode::KeyR) {
-                entities_to_despawn.push(*entity); // Mark the entity for despawning + needs to be this way to avoid segfault
-                enemy_killed(&mut score);
-            }
-        });
-    for entity in entities_to_despawn {
-        if commands.get_entity(entity).is_some() { //make sure it exists
-            commands.entity(entity).despawn(); //despawn all
-        }
-    }
-}
-
-pub fn enemy_killed(score: &mut ResMut<Score>) {
+pub fn enemy_killed(score: &mut ResMut<Score>, mut player: &mut Player) {
     score.increment();
+    player.heal(1);
     println!("Score: {}", score.get_enemies_killed());
 }
 
@@ -88,19 +74,23 @@ pub fn display_score(_score: Res<Score>) {
 }
 
 pub fn check_collisions(
-    mut player_query: Query<(&mut Player, &CollisionBox, &Transform), Without<Invulnerability>>,
-    other_entities_query: Query<(Entity, &Transform, &CollisionBox), Without<Player>>,
+    mut player_query: Query<(Entity, &mut Player, &CollisionBox, &Transform, Option<Mut< Invulnerability>>)>,    
+    other_entities_query: Query<(Entity, &Transform, &CollisionBox), (Without<Player>, Without<Line>)>,
+    mut collision_events: EventWriter<CollisionEvent>,
     points_query: Query<(Entity, &Transform), With<PointMarker>>,
     mut score: ResMut<Score>,
     mut commands: Commands,
+    mut points: ResMut<Points>,  
+    mut despawned_entities: Local<HashSet<Entity>>,  // Track despawned entities
     line_query: Query<(Entity, &Transform, &CollisionBox), With<Line>>,
+    mut exit: EventWriter<AppExit>, // Add the AppExit event writer
 ) {
     for (enemy_entity, transform, bounding_box) in other_entities_query.iter() {
         let enemy_min_x = transform.translation.x - bounding_box.width / 2.0;
         let enemy_max_x = transform.translation.x + bounding_box.width / 2.0;
         let enemy_min_y = transform.translation.y - bounding_box.height / 2.0;
         let enemy_max_y = transform.translation.y + bounding_box.height / 2.0;
-
+        for (entity, mut player, player_box, player_transform, mut invulnerability_option) in player_query.iter_mut() {
         for (point_entity, point_transform) in points_query.iter() {
             let point = Vec2::new(point_transform.translation.x, point_transform.translation.y);
 
@@ -110,31 +100,31 @@ pub fn check_collisions(
                 && point.y < enemy_max_y
             {
                 // Call the kill_enemy function
-                score.increment();
+                enemy_killed(&mut score,&mut player);
+                
 
                 // Despawn the enemy
                 commands.entity(enemy_entity).despawn();
                 break;
             }
         }
-    }
-    for (enemy_entity, enemy_box, enemy_transform) in other_entities_query.iter() {
-        let enemy_min_x = enemy_box.translation.x - enemy_transform.width / 2.0;
-        let enemy_max_x = enemy_box.translation.x + enemy_transform.width / 2.0;
-        let enemy_min_y = enemy_box.translation.y - enemy_transform.height / 2.0;
-        let enemy_max_y = enemy_box.translation.y + enemy_transform.height / 2.0;
+    }}
+    for (attack_entity, attack_transform, attack_box) in line_query.iter() {
+        let attack_min_x = attack_transform.translation.x - attack_box.width / 2.0;
+        let attack_max_x = attack_transform.translation.x + attack_box.width / 2.0;
+        let attack_min_y = attack_transform.translation.y - attack_box.height / 2.0;
+        let attack_max_y = attack_transform.translation.y + attack_box.height / 2.0;
 
-        for (line_entity, line_box, line_transform) in line_query.iter() {
-            let line_min_x = line_box.translation.x - line_transform.width / 2.0;
-            let line_max_x = line_box.translation.x + line_transform.width / 2.0;
-            let line_min_y = line_box.translation.y - line_transform.height / 2.0;
-            let line_max_y = line_box.translation.y + line_transform.height / 2.0;
+        for (enemy_entity, enemy_transform, enemy_box) in other_entities_query.iter() {
+            let enemy_min_x = enemy_transform.translation.x - enemy_box.width / 2.0;
+            let enemy_max_x = enemy_transform.translation.x + enemy_box.width / 2.0;
+            let enemy_min_y = enemy_transform.translation.y - enemy_box.height / 2.0;
+            let enemy_max_y = enemy_transform.translation.y + enemy_box.height / 2.0;
 
-            // Check for collision
-            if line_max_x > enemy_min_x
-                && line_min_x < enemy_max_x
-                && line_max_y > enemy_min_y
-                && line_min_y < enemy_max_y
+            if attack_max_x > enemy_min_x
+                && attack_min_x < enemy_max_x
+                && attack_max_y > enemy_min_y
+                && attack_min_y < enemy_max_y
             {
                 // Call the kill_enemy function
                 score.increment();
@@ -148,17 +138,31 @@ pub fn check_collisions(
             }
         }
     }
-    for (mut player, player_box, player_transform) in player_query.iter_mut() {
+
+    
+    for (entity, mut player, player_box, player_transform, mut invulnerability_option) in player_query.iter_mut() {
+        let player_min_x = player_transform.translation.x - player_box.width / 2.0;
+        let player_max_x = player_transform.translation.x + player_box.width / 2.0;
+        let player_min_y = player_transform.translation.y - player_box.height / 2.0;
+        let player_max_y = player_transform.translation.y + player_box.height / 2.0;
+
+        if let Some(ref mut invulnerability) = invulnerability_option {
+            if invulnerability.is_active() {
+                continue; // Skip damage application if invulnerable
+            }
+        }
+
         for (enemy_entity, enemy_transform, enemy_box) in other_entities_query.iter() {
             let enemy_min_x = enemy_transform.translation.x - enemy_box.width / 2.0;
             let enemy_max_x = enemy_transform.translation.x + enemy_box.width / 2.0;
             let enemy_min_y = enemy_transform.translation.y - enemy_box.height / 2.0;
             let enemy_max_y = enemy_transform.translation.y + enemy_box.height / 2.0;
 
-            let player_min_x = player_transform.translation.x - player_box.width / 2.0;
-            let player_max_x = player_transform.translation.x + player_box.width / 2.0;
-            let player_min_y = player_transform.translation.y - player_box.height / 2.0;
-            let player_max_y = player_transform.translation.y + player_box.height / 2.0;
+            if player_max_x > enemy_min_x
+                && player_min_x < enemy_max_x
+                && player_max_y > enemy_min_y
+                && player_min_y < enemy_max_y
+            {
 
             if player_max_x > enemy_min_x
                 && player_min_x < enemy_max_x
@@ -166,8 +170,48 @@ pub fn check_collisions(
                 && player_min_y < enemy_max_y
             {
                 // Handle collision, but only if player is not invulnerable
-                player.take_damage(10);
+                player.take_damage(100, entity, &mut commands, invulnerability_option.as_deref_mut(), 0.5, &mut exit);
             }
+        }
+    }
+}
+}
+
+
+pub fn handle_escape_pressed(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut state: ResMut<NextState<GameState>>,
+    mut curr_state: ResMut<State<GameState>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Escape) {
+        println!("gaming");
+        if *curr_state.get() == GameState::Running {
+            state.set(GameState::Paused);
+        } else if *curr_state.get() == GameState::Paused {
+            state.set(GameState::Running);
+        }
+    }
+}
+
+pub fn flicker_system(
+    time: Res<Time>,
+    mut query: Query<(&mut Sprite, &mut Invulnerability), With<Player>>,
+) {
+    for (mut sprite, mut invulnerability) in query.iter_mut() {
+        // Update the timer for invulnerability
+        invulnerability.timer.tick(time.delta());
+
+        // If the player is invulnerable, adjust the alpha value to create a flicker effect
+        if invulnerability.is_active() {
+            // Flicker by adjusting alpha value between 0.2 and 1.0
+            let flicker_phase = (invulnerability.timer.elapsed_secs() * 10.0).sin();
+            let new_alpha = 0.5 * flicker_phase.abs();
+
+            // Directly set the alpha using set_alpha
+            sprite.color.set_alpha(new_alpha);
+        } else {
+            // Ensure the player is fully visible when not invulnerable
+            sprite.color.set_alpha(1.0);
         }
     }
 }
@@ -209,8 +253,14 @@ pub fn manage_invulnerability(
 ) {
     for (entity, mut invulnerability) in query.iter_mut() {
         invulnerability.timer.tick(time.delta());
+        println!(
+            "Invulnerability timer ticking for entity {:?}, remaining: {:.2}",
+            entity,
+            invulnerability.timer.remaining_secs()
+        );
         if invulnerability.timer.finished() {
-            commands.entity(entity).remove::<Invulnerability>();
+            println!("Invulnerability expired for entity {:?}", entity);
+            commands.entity(entity).remove::<Invulnerability>(); // Remove the component when the timer is done
         }
     }
 }
@@ -240,8 +290,90 @@ pub fn update_lifetime(
     }
 }
 
-pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn update_cooldowns_ui(
+    time: Res<Time>,
+    mut cooldowns_query: Query<&mut Cooldowns>,
+    mut text_query: Query<&mut Text, With<CooldownUi>>,
+) {
+    if let Ok(mut cooldowns) = cooldowns_query.get_single_mut() {
+        // Update the UI text for each ability
+        for (i, mut text) in text_query.iter_mut().enumerate() {
+            let ability_text = match i {
+                0 => format!("Attack: {:.1}s", cooldowns.get_cooldown(Ability::Attack).unwrap_or(0.0)),
+                1 => format!("Ranged: {:.1}s", cooldowns.get_cooldown(Ability::Ranged).unwrap_or(0.0)),
+                2 => format!("Dash: {:.1}s", cooldowns.get_cooldown(Ability::Dash).unwrap_or(0.0)),
+                3 => format!("Aoe: {:.1}s", cooldowns.get_cooldown(Ability::Aoe).unwrap_or(0.0)),
+                _ => "Unknown Ability".to_string(),
+            };
+
+            text.sections[0].value = ability_text;
+        }
+    }
+}
+
+pub fn update_ui_text(
+    player_query: Query<&Player>,
+    score: Res<Score>,
+    mut text_query: Query<(&mut Text, Option<&HealthText>, Option<&ScoreText>)>,
+) {
+    if let Ok(player) = player_query.get_single() {
+        for (mut text, health_text, score_text) in text_query.iter_mut() {
+            if health_text.is_some() {
+                text.sections[0].value = format!("Health: {}", player.health);
+            } else if score_text.is_some() {
+                text.sections[0].value = format!("Score: {}", score.get_enemies_killed());
+            }
+        }
+    }
+}
+
+pub fn show_pause_menu(mut query: Query<&mut Visibility, With<PauseMenu>>) {
+    for mut visibility in query.iter_mut() {
+        *visibility = Visibility::Visible;
+    }
+}
+
+pub fn hide_pause_menu(mut query: Query<&mut Visibility, With<PauseMenu>>) {
+    for mut visibility in query.iter_mut() {
+        *visibility = Visibility::Hidden;
+    }
+}
+
+pub fn setup_pause_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn((
+        NodeBundle {
+            style: Style {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                position_type: PositionType::Absolute,
+                ..Default::default()
+            },
+            background_color: Color::srgba(0.0, 0.0, 0.0, 0.7).into(), // Semi-transparent background
+            visibility: Visibility::Hidden, // Initially hidden
+            ..Default::default()
+        },
+        PauseMenu,
+    ))
+    .with_children(|parent| {
+        parent.spawn(TextBundle {
+            text: Text::from_section(
+                "Game Paused\nPress Esc to Resume",
+                TextStyle {
+                    font: asset_server.load("FiraSans-Bold.ttf"),
+                    font_size: 60.0,
+                    color: Color::WHITE,
+                },
+            ),
+            ..Default::default()
+        });
+    });
+}
+
+pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut state: ResMut<NextState<GameState>>) {
     commands.spawn(Camera2dBundle::default());
+    state.set(GameState::Running);
     commands.spawn(
         TextBundle::from_section(
             "WASD to Move around, Q to Melee, E for Ranged, T for AoE, F to Dash",
@@ -257,6 +389,120 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         }),
     );
+    commands.spawn(NodeBundle {
+        style: Style {
+            width: Val::Percent(100.0), 
+            height: Val::Percent(100.0),
+            position_type: PositionType::Relative,
+            ..Default::default()
+        },
+        ..Default::default()
+    })
+    .with_children(|parent| {
+        // Health and Score container
+        parent.spawn(NodeBundle {
+            style: Style {
+                position_type: PositionType::Absolute,
+                top: Val::Px(10.0),
+                left: Val::Px(10.0),
+                flex_direction: FlexDirection::Column, // Stack vertically
+                margin: UiRect::new(Val::Px(0.0), Val::Px(0.0), Val::Px(50.0), Val::Px(0.0)),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            // Health Text
+            parent.spawn(TextBundle {
+                text: Text::from_section(
+                    "Health: 500",
+                    TextStyle {
+                        font: asset_server.load("FiraSans-Bold.ttf"),
+                        font_size: 40.0,
+                        color: Color::WHITE,
+                    },
+                ),
+                ..Default::default()
+            })
+            .insert(HealthText);
+
+            // Score Text
+            parent.spawn(TextBundle {
+                text: Text::from_section(
+                    "Score: 0",
+                    TextStyle {
+                        font: asset_server.load("FiraSans-Bold.ttf"),
+                        font_size: 40.0,
+                        color: Color::WHITE,
+                    },
+                ),
+                style: Style {
+                    //margin: UiRect::new(Val::Px(0.0), Val::Px(0.0), Val::Px(100.0), Val::Px(0.0)),
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .insert(ScoreText);
+        });
+
+        // Ability boxes container at the bottom
+        parent.spawn(NodeBundle {
+            style: Style {
+                width: Val::Percent(100.0), 
+                height: Val::Px(60.0), // 60px high for the ability boxes
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(0.0), // Position at the bottom of the screen
+                justify_content: JustifyContent::SpaceAround, // Evenly space ability boxes
+                align_items: AlignItems::Center, // Center the boxes vertically within the container
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            let abilities = [
+                Ability::Attack,
+                Ability::Ranged,
+                Ability::Dash,
+                Ability::Aoe,
+            ];
+
+            for ability in abilities.iter() {
+                let ability_name = match ability {
+                    Ability::Attack => "Attack",
+                    Ability::Ranged => "Ranged",
+                    Ability::Dash => "Dash",
+                    Ability::Aoe => "Bladestorm",
+                };
+
+                parent.spawn(NodeBundle {
+                    style: Style {
+                        width: Val::Percent(20.0),
+                        height: Val::Px(50.0), // 50px height for each ability box
+                        margin: UiRect::all(Val::Px(5.0)),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..Default::default()
+                    },
+                    background_color: Color::srgba(0.9, 0.9, 0.9, 0.5).into(),
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    parent.spawn(TextBundle {
+                        text: Text::from_section(
+                            format!("{}: {:.1}s", ability_name, 0.0), // Ability name and placeholder cooldown
+                            TextStyle {
+                                font: asset_server.load("FiraSans-Bold.ttf"),
+                                font_size: 30.0,
+                                color: Color::BLACK,
+                            },
+                        ),
+                        ..Default::default()
+                    })
+                    .insert(CooldownUi);
+                });
+            }
+        });
+    });
 
     let game_textures = GameTextures {
         player: asset_server.load(PLAYER_SPRITE),
@@ -277,3 +523,4 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(mouse_coords);
     commands.insert_resource(Points::default());
 }
+
