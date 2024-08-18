@@ -81,6 +81,7 @@ pub fn check_collisions(
     mut score: ResMut<Score>,
     mut commands: Commands,
     mut points: ResMut<Points>,  
+    mut enemy_counter: ResMut<EnemyCount>,
     mut despawned_entities: Local<HashSet<Entity>>,  // Track despawned entities
     line_query: Query<(Entity, &Transform, &CollisionBox), With<Line>>,
     mut exit: EventWriter<AppExit>, // Add the AppExit event writer
@@ -105,6 +106,7 @@ pub fn check_collisions(
 
                 // Despawn the enemy
                 commands.entity(enemy_entity).despawn();
+                enemy_counter.0 -= 1;
                 break;
             }
         }
