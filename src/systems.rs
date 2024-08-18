@@ -1,58 +1,10 @@
-use bevy::input::mouse::{self, MouseMotion};
 use bevy::prelude::*;
-use bevy::sprite::MaterialMesh2dBundle;
-use bevy::utils::HashSet;
-use bevy::window::PrimaryWindow;
-use crate::components::{Direction, DirectionComponent, MovementSpeed, CollisionBox, Player, Tag, EnemySpawnTimer};
+use crate::components::{Ability, Cooldowns, CollisionBox, Invulnerability, Lifetime, Line, MousePosition, PointMarker, Points, Player, Tag};
 use crate::events::{CollisionEvent, Score};
-use crate::{Ability, Cooldowns, Invulnerability, Lifetime, MousePosition, PointMarker, Points};
-use crate::Line;
-use rand::Rng;
 use std::f32::consts::PI;
 
+use crate::{EnemyCount, GameTextures, ENEMY_SPRITE, PLAYER_SPRITE};
 // Systems Implementation
-
-pub fn spawn_enemies_over_time(
-    mut commands: Commands,
-    time: Res<Time>,
-    asset_server: Res<AssetServer>,
-    player_query: Query<&Transform, With<Player>>, // Query to get the player's Transform
-    mut spawn_timer: ResMut<EnemySpawnTimer>,
-) {
-    // Update the timer
-    spawn_timer.timer.tick(time.delta());
-
-    // If the timer has finished and we haven't spawned all enemies
-    if spawn_timer.timer.finished() && spawn_timer.enemies_spawned < spawn_timer.total_enemies {
-        if let Ok(player_transform) = player_query.get_single() {
-            let player_position = player_transform.translation;
-
-            // Generate a random angle between 0 and 2π radians (full circle)
-            let mut rng = rand::thread_rng();
-            let angle = rng.gen_range(0.0..(2.0 * PI));
-
-            // Calculate the x and y position based on the angle and radius
-            let x = player_position.x + spawn_timer.spawn_radius * angle.cos();
-            let y = player_position.y + spawn_timer.spawn_radius * angle.sin();
-
-            // Spawn the enemy entity at the calculated position
-            commands.spawn((
-                SpriteBundle {
-                    texture: asset_server.load("../assets/pink_box.png"), // Enemy texture
-                    transform: Transform::from_xyz(x, y, 0.0),           // Set position
-                    ..Default::default()
-                },
-            ))
-            .insert(CollisionBox::new(50.0, 50.0)) // Add collision box
-            .insert(Tag { name: format!("Enemy{}", spawn_timer.enemies_spawned) }) // Tag with a unique name
-            .insert(MovementSpeed(50.0)) // Set movement speed
-            .insert(DirectionComponent { direction: Direction::None }); // Set initial direction
-
-            // Increment the count of spawned enemies
-            spawn_timer.enemies_spawned += 1;
-        }
-    }
-}
 
 pub fn camera_follow_player(
     mut param_set: ParamSet<(
@@ -119,11 +71,11 @@ pub fn handle_collisions(
                 enemy_killed(&mut score);
             }
         });
-        for entity in entities_to_despawn {
-            if commands.get_entity(entity).is_some() { //make sure it exists
-                commands.entity(entity).despawn(); //despawn all
-            }
+    for entity in entities_to_despawn {
+        if commands.get_entity(entity).is_some() { //make sure it exists
+            commands.entity(entity).despawn(); //despawn all
         }
+    }
 }
 
 pub fn enemy_killed(score: &mut ResMut<Score>) {
@@ -138,12 +90,9 @@ pub fn display_score(_score: Res<Score>) {
 pub fn check_collisions(
     mut player_query: Query<(&mut Player, &CollisionBox, &Transform), Without<Invulnerability>>,
     other_entities_query: Query<(Entity, &Transform, &CollisionBox), Without<Player>>,
-    mut collision_events: EventWriter<CollisionEvent>,
     points_query: Query<(Entity, &Transform), With<PointMarker>>,
     mut score: ResMut<Score>,
     mut commands: Commands,
-    mut points: ResMut<Points>,  
-    mut despawned_entities: Local<HashSet<Entity>>,  // Track despawned entities
     line_query: Query<(Entity, &Transform, &CollisionBox), With<Line>>,
 ) {
     for (enemy_entity, transform, bounding_box) in other_entities_query.iter() {
@@ -223,141 +172,9 @@ pub fn check_collisions(
     }
 }
 
-
-pub fn pathfind_towards_player(
-    player_query: Query<&Transform, With<Player>>, // Get the player's transform
-    mut enemy_query: Query<(&mut DirectionComponent, &Transform), Without<Player>>,
-) {
-    if let Ok(player_transform) = player_query.get_single() {
-        for (mut direction_component, enemy_transform) in enemy_query.iter_mut() {
-            let direction_vector = (player_transform.translation - enemy_transform.translation).normalize();
-
-            direction_component.direction = if direction_vector.x > 0.0 && direction_vector.y > 0.0 {
-                Direction::UpRight
-            } else if direction_vector.x < 0.0 && direction_vector.y > 0.0 {
-                Direction::UpLeft
-            } else if direction_vector.x > 0.0 && direction_vector.y < 0.0 {
-                Direction::DownRight
-            } else if direction_vector.x < 0.0 && direction_vector.y < 0.0 {
-                Direction::DownLeft
-            } else if direction_vector.x > 0.0 {
-                Direction::Right
-            } else if direction_vector.x < 0.0 {
-                Direction::Left
-            } else if direction_vector.y > 0.0 {
-                Direction::Up
-            } else if direction_vector.y < 0.0 {
-                Direction::Down
-            } else {
-                Direction::None
-            };
-        }
-    }
-}
-
-pub fn move_entities(
-    time: Res<Time>,
-    mut query: Query<(&DirectionComponent, &mut Transform, &MovementSpeed)>,
-) {
-    for (direction_component, mut transform, speed) in query.iter_mut() {
-        let delta = speed.0 * time.delta_seconds();
-
-        match direction_component.direction {
-            Direction::None => {},
-            Direction::Up => transform.translation.y += delta,
-            Direction::Down => transform.translation.y -= delta,
-            Direction::Left => transform.translation.x -= delta,
-            Direction::Right => transform.translation.x += delta,
-            Direction::UpRight => {
-                transform.translation.y += delta;
-                transform.translation.x += delta;
-            }
-            Direction::UpLeft => {
-                transform.translation.y += delta;
-                transform.translation.x -= delta;
-            }
-            Direction::DownRight => {
-                transform.translation.y -= delta;
-                transform.translation.x += delta;
-            }
-            Direction::DownLeft => {
-                transform.translation.y -= delta;
-                transform.translation.x -= delta;
-            }
-        }
-    }
-}
-
-pub fn sprite_movement(time: Res<Time>, mut sprite_position: Query<(&mut Direction, &mut Transform)>, keyboard_input: Res<ButtonInput<KeyCode>>) {
-    for (mut logo, mut transform) in &mut sprite_position {
-        let delta = 150. * time.delta_seconds(); //movespeed
-
-        //6dof movement handling
-        if keyboard_input.pressed(KeyCode::KeyA) {
-            if keyboard_input.pressed(KeyCode::KeyW) {
-                *logo = Direction::UpLeft;
-            }
-            else if   keyboard_input.pressed(KeyCode::KeyS) {
-                *logo = Direction::DownLeft;
-            }
-            else {
-                *logo = Direction::Left;
-            }
-        }
-        else if keyboard_input.pressed(KeyCode::KeyD) {
-            if keyboard_input.pressed(KeyCode::KeyW) {
-                *logo = Direction::UpRight;
-            }
-            else if   keyboard_input.pressed(KeyCode::KeyS) {
-                *logo = Direction::DownRight;
-            }
-            else {
-                *logo = Direction::Right;
-            }
-        }
-        else if keyboard_input.pressed(KeyCode::KeyS) {
-            *logo = Direction::Down;
-        }
-        else if keyboard_input.pressed(KeyCode::KeyW) {
-            *logo = Direction::Up;
-        }
-        else {
-            *logo = Direction::None;
-        }
-
-        //applying velocity to image transform
-        match *logo {
-            Direction::None => {
-                transform.translation.y = transform.translation.y;
-                transform.translation.x = transform.translation.x;
-            }
-            Direction::Up => transform.translation.y += delta,
-            Direction::Down => transform.translation.y -= delta,
-            Direction::Left => transform.translation.x -= delta,
-            Direction::Right => transform.translation.x += delta,
-            Direction::UpRight => {
-                transform.translation.y += delta;
-                transform.translation.x += delta;
-            }
-            Direction::UpLeft => {
-                transform.translation.y += delta;
-                transform.translation.x -= delta;
-            }
-            Direction::DownRight => {
-                transform.translation.y -= delta;
-                transform.translation.x += delta;
-            }
-            Direction::DownLeft => {
-                transform.translation.y -= delta;
-                transform.translation.x -= delta;
-            }
-        }
-    }
-}
-
 // System to update the MousePosition resource whenever the mouse moves
 pub fn update_mouse_position(
-    q_windows: Query<&Window, With<PrimaryWindow>>,
+    q_windows: Query<&Window>,
     mut mouse_position: ResMut<MousePosition>,
     camera_query: Query<(&GlobalTransform, &OrthographicProjection), With<Camera2d>>,
 ) {
@@ -397,16 +214,16 @@ pub fn update_player_position(
 }
     
 pub fn use_ability(
-    mut commands: Commands,
+    commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut cooldown_query: Query<&mut Cooldowns>,
     mut player_query: Query<(Entity, &mut Transform, &mut Player)>,
     mouse_position: Res<MousePosition>,
     asset_server: Res<AssetServer>,
-    mut points: ResMut<Points>,
+    points: ResMut<Points>,
 ) {
     if let Ok(mut cooldowns) = cooldown_query.get_single_mut() {
-        if let Ok((player_entity, mut transform, mut player)) = player_query.get_single_mut() {
+        if let Ok((player_entity, mut transform, player)) = player_query.get_single_mut() {
         let player_position = Vec2::new(transform.translation.x, transform.translation.y);
 
         // Line-drawing ability (mapped to the F key)
@@ -686,7 +503,6 @@ pub fn update_lifetime(
     }
 }
 
-
 pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
     commands.spawn(
@@ -705,17 +521,15 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         }),
     );
 
-    commands.spawn((
-        SpriteBundle {
-            texture: asset_server.load("../assets/blue_box.png"),
-            transform: Transform::from_xyz(100., 0., 0.),
-            ..default()
-        },
-        Direction::None,
-    ))
-    .insert(CollisionBox::new(50.0, 50.0))
-    .insert(Player::new(500))
-    .insert(Cooldowns::new());  // Initialize cooldowns for abilities)
+    let game_textures = GameTextures {
+        player: asset_server.load(PLAYER_SPRITE),
+        enemy: asset_server.load(ENEMY_SPRITE),
+    };
 
-    commands.insert_resource(EnemySpawnTimer::new(10, 750.)); 
+    let enemy_count = EnemyCount(0);
+    commands.insert_resource(game_textures);
+    commands.insert_resource(enemy_count);
+    commands.insert_resource(Score::new());
+    commands.insert_resource(MousePosition::default());
+    commands.insert_resource(Points::default());
 }

@@ -1,18 +1,15 @@
+//use bevy::prelude::{Component, Transform};
 use bevy::prelude::*;
+use std::collections::HashMap;
 
-#[derive(Component, PartialEq)]
-pub enum Direction {
-    Up,
-    UpLeft,
-    Left,
-    Right,
-    UpRight,
-    Down,
-    DownLeft,
-    DownRight,
-    None,
+// Common Components
+#[derive(Component)]
+pub struct Velocity {
+    pub x: f32,
+    pub y: f32,
 }
 
+// Player Components
 #[derive(Component)]
 pub struct Line;
 
@@ -51,29 +48,12 @@ pub struct PointMarker;
 
 #[derive(Component)]
 pub struct Lifetime {
-    pub(crate) timer: Timer,
-}
-
-// Add the EnemySpawnTimer struct
-#[derive(Component)]
-#[derive(Resource)]
-pub struct EnemySpawnTimer {
     pub timer: Timer,
-    pub enemies_spawned: usize,
-    pub total_enemies: usize,
-    pub spawn_radius: f32,
 }
 
-impl EnemySpawnTimer {
-    pub fn new(total_enemies: usize, spawn_radius: f32) -> Self {
-        EnemySpawnTimer {
-            timer: Timer::from_seconds(1.0, TimerMode::Repeating),
-            enemies_spawned: 0,
-            total_enemies,
-            spawn_radius,
-        }
-    }
-}
+// Enemy components
+#[derive(Component)]
+pub struct Enemy;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Ability {
@@ -83,7 +63,6 @@ pub enum Ability {
     Aoe,
 }
 
-use std::collections::HashMap;
 
 #[derive(Component)]
 pub struct Cooldowns {
