@@ -1,8 +1,8 @@
 use bevy::prelude::*;
-use crate::components::{Cooldowns, CollisionBox, Invulnerability, Lifetime, Line, PointMarker, Points, Player};
+use crate::components::{Collider, CollisionBox, Cooldowns, Invulnerability, Lifetime, Line, Player, PointMarker, Points};
 use crate::events::{CollisionEvent, Score};
 
-use crate::{EnemyCount, GameTextures, MouseCoords, ENEMY_SPRITE, LINE_SPRITE, PLAYER_SPRITE};
+use crate::{EnemyCount, GameTextures, MouseCoords, BOSS_SPRITE, ENEMY_SPRITE, LINE_SPRITE, PLAYER_SPRITE};
 // Systems Implementation
 
 pub fn camera_follow_player(
@@ -55,30 +55,6 @@ pub fn camera_follow_player(
 }
 
 
-pub fn handle_collisions(
-    mut commands: Commands,
-    mut collision_events: EventReader<CollisionEvent>,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut score: ResMut<Score>, // Access the Score resource
-    mut enemy_count: ResMut<EnemyCount>,
-) {
-    let mut entities_to_despawn = Vec::new(); // Collect entities to despawn after the loop
-    collision_events
-        .read() // Use par_read to access events in a parallel-safe manner
-        .for_each(|CollisionEvent(entity)| {
-            if keyboard_input.pressed(KeyCode::KeyR) {
-                entities_to_despawn.push(*entity); // Mark the entity for despawning + needs to be this way to avoid segfault
-                enemy_killed(&mut score);
-                enemy_count.0 -= 1;
-            }
-        });
-    for entity in entities_to_despawn {
-        if commands.get_entity(entity).is_some() { //make sure it exists
-            commands.entity(entity).despawn(); //despawn all
-        }
-    }
-}
-
 pub fn enemy_killed(score: &mut ResMut<Score>) {
     score.increment();
     println!("Score: {}", score.get_enemies_killed());
@@ -88,11 +64,38 @@ pub fn display_score(_score: Res<Score>) {
     //println!("Enemies killed: {}", score.get_enemies_killed());
 }
 
+//pub fn check_collisions(
+//    mut query: Query<(&Collider, &Transform, &Sprite)>,
+//) {
+//    let mut colliders = query.iter_combinations_mut();
+//    while let Some([(_,  transform1, sprite1), (_, transform2, sprite2)]) = colliders.fetch_next() {
+//        if let Some(_) = aabb_collision(transform1.translation, sprite1, transform2.translation, sprite2) {
+//            println!("Collision detected between {:?} and {:?}", transform1.translation, transform2.translation);
+//        }
+//    }
+//}
+//
+//fn aabb_collision(pos1: Vec3, sprite1: &Sprite, pos2: Vec3, sprite2: &Sprite) -> Option<()> {
+//    let half_size1 = sprite1.custom_size.unwrap_or(Vec2::new(1.0, 1.0)) / 2.0;
+//    let half_size2 = sprite2.custom_size.unwrap_or(Vec2::new(1.0, 1.0)) / 2.0;
+//
+//    if pos1.x - half_size1.x < pos2.x + half_size2.x
+//        && pos1.x + half_size1.x > pos2.x - half_size2.x
+//        && pos1.y - half_size1.y < pos2.y + half_size2.y
+//        && pos1.y + half_size1.y > pos2.y - half_size2.y
+//    {
+//        Some(())
+//    } else {
+//        None
+//    }
+//}
+
 pub fn check_collisions(
     mut player_query: Query<(&mut Player, &CollisionBox, &Transform), Without<Invulnerability>>,
     other_entities_query: Query<(Entity, &Transform, &CollisionBox), Without<Player>>,
     points_query: Query<(Entity, &Transform), With<PointMarker>>,
     mut score: ResMut<Score>,
+    mut enemy_count: ResMut<EnemyCount>,
     mut commands: Commands,
     line_query: Query<(Entity, &Transform, &CollisionBox), With<Line>>,
 ) {
@@ -115,6 +118,7 @@ pub fn check_collisions(
 
                 // Despawn the enemy
                 commands.entity(enemy_entity).despawn();
+                enemy_count.0 -= 1;
                 break;
             }
         }
@@ -262,6 +266,7 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let game_textures = GameTextures {
         player: asset_server.load(PLAYER_SPRITE),
         enemy: asset_server.load(ENEMY_SPRITE),
+        boss: asset_server.load(BOSS_SPRITE),
         line: asset_server.load(LINE_SPRITE),
     };
 

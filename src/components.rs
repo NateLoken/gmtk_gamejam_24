@@ -1,5 +1,4 @@
-//use bevy::prelude::{Component, Transform};
-use bevy::prelude::*;
+use bevy::prelude::{Component, Timer, TimerMode, Vec2, Resource};
 use std::collections::HashMap;
 
 // Common Components
@@ -8,6 +7,9 @@ pub struct Velocity {
     pub x: f32,
     pub y: f32,
 }
+
+#[derive(Component)]
+pub struct Collider;
 
 // Player Components
 #[derive(Component)]
@@ -36,6 +38,9 @@ pub struct Lifetime {
 // Enemy components
 #[derive(Component)]
 pub struct Enemy;
+
+#[derive(Component)]
+pub struct Boss;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Ability {
@@ -92,27 +97,4 @@ pub struct Invulnerability {
 pub struct CollisionBox {
     pub width: f32,
     pub height: f32,
-}
-
-impl CollisionBox {
-    pub fn new(width: f32, height: f32) -> Self {
-        CollisionBox { width, height }
-    }
-
-    pub fn intersects(&self, transform: &Transform, other: &CollisionBox, other_transform: &Transform) -> bool {
-        let self_min_x = transform.translation.x - self.width / 2.0;
-        let self_max_x = transform.translation.x + self.width / 2.0;
-        let self_min_y = transform.translation.y - self.height / 2.0;
-        let self_max_y = transform.translation.y + self.height / 2.0;
-
-        let other_min_x = other_transform.translation.x - other.width / 2.0;
-        let other_max_x = other_transform.translation.x + other.width / 2.0;
-        let other_min_y = other_transform.translation.y - other.height / 2.0;
-        let other_max_y = other_transform.translation.y + other.height / 2.0;
-
-        self_min_x < other_max_x &&
-        self_max_x > other_min_x &&
-        self_min_y < other_max_y &&
-        self_max_y > other_min_y
-    }
 }

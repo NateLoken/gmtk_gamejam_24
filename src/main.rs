@@ -13,6 +13,7 @@ use events::*;
 //Assets constants
 const PLAYER_SPRITE: &str = "blue_box.png";
 const ENEMY_SPRITE: &str = "pink_box.png";
+const BOSS_SPRITE: &str = "red_box.png";
 const LINE_SPRITE: &str = "red_line.png";
 const SPRITE_SIZE: (f32, f32) = (225., 225.);
 const SPRITE_SCALE: f32 = 0.5;
@@ -26,11 +27,12 @@ const PLAYER_RADIUS: f32 = 500.;
 const MAX_ENEMIES: u32 = 10;
 const ENEMY_SPEED: f32 = 150.;
 
-// Texture Resource
+// Resources
 #[derive(Resource)]
 struct GameTextures {
     player: Handle<Image>,
     enemy: Handle<Image>,
+    boss: Handle<Image>,
     line: Handle<Image>,
 }
 
@@ -46,7 +48,6 @@ struct EnemyCount(u32);
 
 fn main() {
     App::new()
-
         .add_plugins(DefaultPlugins)
         .add_plugins(PlayerPlugin)
         .add_plugins(EnemyPlugin)
@@ -57,7 +58,6 @@ fn main() {
                 camera_follow_player,
                 display_score,
                 check_collisions,
-                handle_collisions,
                 camera_follow_player,
                 update_mouse_position,
                 update_lifetime,

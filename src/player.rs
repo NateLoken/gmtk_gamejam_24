@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use crate::{GameTextures, MouseCoords, BASE_SPEED, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
-use crate::components::{Ability, CollisionBox, Cooldowns, Invulnerability, Lifetime, Line, Player, PointMarker, Points, Velocity}; 
+use crate::components::{Ability, Collider, CollisionBox, Cooldowns, Invulnerability, Lifetime, Line, Player, PointMarker, Points, Velocity}; 
 use bevy::prelude::*;
 
 pub struct PlayerPlugin;
@@ -31,7 +31,8 @@ fn player_spawn_system(
                 ..Default::default()
             },
     ))
-        .insert(CollisionBox::new(SPRITE_SIZE.0 * SPRITE_SCALE, SPRITE_SIZE.1 * SPRITE_SCALE))
+        .insert(Collider)
+        .insert(CollisionBox{ width: SPRITE_SIZE.0 * SPRITE_SCALE, height: SPRITE_SIZE.1 * SPRITE_SCALE })
         .insert(Player { health: 500 })
         .insert(Velocity { x: 0., y: 0. })
         .insert(Cooldowns::new());  // Initialize cooldowns for abilities)
@@ -169,7 +170,8 @@ fn ranged_attack(
             }
         )
             .insert(Line)
-            .insert(CollisionBox::new(length, SPRITE_SIZE.0))
+            .insert(Collider)
+            .insert(CollisionBox{ width: length, height: SPRITE_SIZE.0 })
             .insert(Lifetime {
                 timer: Timer::from_seconds(0.1, TimerMode::Once)
             });
@@ -203,7 +205,8 @@ fn dash_attack(
             ..Default::default()
         })
         .insert(Line)
-        .insert(CollisionBox::new(length, SPRITE_SIZE.0))
+        .insert(Collider)
+        .insert(CollisionBox{ width: length, height: SPRITE_SIZE.0 })
         .insert(Lifetime {
             timer: Timer::from_seconds(0.1, TimerMode::Once)
         });
