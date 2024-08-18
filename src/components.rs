@@ -23,18 +23,6 @@ impl Player {
         self.health -= amount;
         println!("Player took {} damage, remaining health: {}", amount, self.health);
     }
-
-    //pub fn update_position(&mut self, transform: &Transform) {
-    //    self.x = transform.translation.x;
-    //    self.y = transform.translation.y;
-    //}
-
-    //pub fn move_to(&mut self, x: f32, y: f32, transform: &mut Transform) {
-    //    self.x = x;
-    //    self.y = y;
-    //    transform.translation.x = x;
-    //    transform.translation.y = y;
-    //}
 }
 
 #[derive(Component)]
@@ -88,11 +76,6 @@ impl Cooldowns {
     }
 }
 
-#[derive(Resource)]
-pub struct MousePosition {
-    pub x: f32,
-    pub y: f32,
-}
 
 #[derive(Default, Resource)]
 pub struct Points(pub Vec<Vec2>);
