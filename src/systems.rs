@@ -127,6 +127,8 @@ pub fn check_collisions(
             }
         }
     }}
+    for (entity, mut player, player_box, player_transform, mut invulnerability_option) in player_query.iter_mut() {
+
     for (attack_entity, attack_transform, attack_box) in line_query.iter() {
         let attack_min_x = attack_transform.translation.x - attack_box.width / 2.0;
         let attack_max_x = attack_transform.translation.x + attack_box.width / 2.0;
@@ -145,7 +147,7 @@ pub fn check_collisions(
                 && attack_min_y < enemy_max_y
             {
                 // Call the kill_enemy function
-                score.increment();
+                enemy_killed(&mut score,&mut player, &mut cooldowns_query);
 
                 // Despawn the enemy
                 commands.entity(enemy_entity).despawn();
@@ -154,7 +156,7 @@ pub fn check_collisions(
                 //commands.entity(line_entity).despawn();
                 break;
             }
-        }
+        }}
     }
 
     
