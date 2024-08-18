@@ -14,7 +14,7 @@ use components::{CurrentGameState, GameState, MousePosition, Points, Score};
 
 //Assets constants
 const PLAYER_SPRITE: &str = "default_guy.png";
-const ENEMY_SPRITE: &str = "pink_box.png";
+const ENEMY_SPRITE: &str = "oni.png";
 const LINE_SPRITE: &str = "red_line.png";
 const MAP_SPIRITE: &str = "map.png";
 const SPRITE_SIZE: (f32, f32) = (225., 225.);

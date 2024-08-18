@@ -34,13 +34,13 @@ fn enemy_spawn_system(
                         texture: game_textures.enemy.clone(),
                         transform: Transform {
                             translation: Vec3::new(x, y, 10.),
-                            scale: Vec3::new(SPRITE_SCALE, SPRITE_SCALE, 0.),
+                            scale: Vec3::new(SPRITE_SCALE/8.0, SPRITE_SCALE/8.0, 0.),
                             ..Default::default()
                         },
                         ..Default::default()
                     },
             ))
-                .insert(CollisionBox::new(SPRITE_SIZE.0 * SPRITE_SCALE, SPRITE_SIZE.1 * SPRITE_SCALE))
+                .insert(CollisionBox::new(SPRITE_SIZE.0 * SPRITE_SCALE/8.0, SPRITE_SIZE.1 * SPRITE_SCALE/8.0))
                 .insert(Enemy)
                 .insert(Velocity {x: 0., y: 0.});
 
