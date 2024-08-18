@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-use crate::{GameTextures, MouseCoords, BASE_SPEED, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
+use crate::{spawn_bigfoot, GameTextures, MouseCoords, BASE_SPEED, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
 use crate::components::{Ability, CollisionBox, Cooldowns, GameState, Invulnerability, Lifetime, Line, Player, PointMarker, Points, Velocity}; 
 use bevy::prelude::*;
 
@@ -8,7 +8,7 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostStartup, player_spawn_system)
+        app.add_systems(PostStartup, (player_spawn_system, spawn_bigfoot.after(player_spawn_system)))
             .add_systems(FixedUpdate, (
                     player_movement_system, 
                     player_keyboard_event_system,

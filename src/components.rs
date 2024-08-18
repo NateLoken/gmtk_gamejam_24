@@ -1,6 +1,6 @@
 //use bevy::prelude::{Component, Transform};
-use bevy::{prelude::*, utils::HashSet};
-use std::{collections::HashMap, fmt};
+use bevy::{prelude::*, utils::{hashbrown::HashSet}};
+use std::{collections::{HashMap}, fmt};
 
 // Common Components
 #[derive(Component)]
@@ -18,8 +18,8 @@ pub struct Line;
 #[derive(Component)]
 pub struct Player {
     pub health: i32,
-    pub x: f64,
-    pub y: f64,
+    pub x: f32,
+    pub y: f32,
 }
 
 impl Player {
@@ -36,39 +36,36 @@ impl Player {
         }
     }
 
-    pub fn take_damage(
-        &mut self,
-        amount: i32,
-        entity: Entity,
-        commands: &mut Commands,
-        invulnerability_option: Option<&mut Invulnerability>,
-        invulnerability_duration: f32,
-        exit: &mut EventWriter<AppExit>, 
-    ) {
-        if let Some(invulnerability) = invulnerability_option {
-            if invulnerability.is_active() {
-                //println!("Player is invulnerable, no damage taken.");
-                return;
-            } else {
-                invulnerability.reset(); // Reset the timer if it's not active
-                println!("Invulnerability reset.");
+        pub fn take_damage(
+            &mut self,
+            amount: i32,
+            invulnerability: Option<&mut Invulnerability>,
+        ) {
+            if let Some(mut invuln) = invulnerability {
+                if invuln.is_active() {
+                    println!("Player is invulnerable, no damage taken.");
+                    return;
+                } else {
+                    // Reset the invulnerability timer
+                    invuln.reset();
+                }
             }
-        } else {
-            // If no invulnerability component, add it with the desired duration
-            commands.entity(entity).insert(Invulnerability::new(invulnerability_duration));
-           // println!("Invulnerability added with duration: {} seconds.", invulnerability_duration);
-        }
-
-        // Apply damage to the player
-        self.health -= amount;
-        println!("Player took {} damage, remaining health: {}", amount, self.health);
-
-        if self.health <= 0 {
-            println!("Player has died. Exiting the game.");
-            exit.send(AppExit::Success);
+    
+            // Apply the damage
+            self.health -= amount;
+            println!("Player took {} damage, remaining health: {}", amount, self.health);
+    
+            // Check for game over condition
+            if self.health <= 0 {
+                println!("Player is dead! Game Over.");
+                // Handle game over logic here, such as triggering an event to exit the game
+                // For example, you can trigger the game exit here:
+                // commands.spawn().insert(GameOverEvent);
+                // Or if you want to exit immediately:
+                std::process::exit(0);
+            }
         }
     }
-}
 
 #[derive(Component)]
 pub struct PointMarker;
@@ -146,6 +143,21 @@ pub struct Map;
 #[derive(Default, Resource)]
 pub struct MapGrid {
     pub positions: HashSet<(i32, i32)>, // A set to track the positions of maps on the grid
+}
+
+#[derive(Component)]
+pub struct Bigfoot {
+    pub x: f32,
+    pub y: f32,
+    pub state: BigfootState,
+    pub timer: Timer,
+}
+
+#[derive(PartialEq)]
+pub enum BigfootState {
+    Invulnerable,
+    Solid,
+    Cleanup,
 }
 
 #[derive(Resource)]

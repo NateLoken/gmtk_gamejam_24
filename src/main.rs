@@ -75,6 +75,10 @@ fn main() {
                 flicker_system.run_if(in_state(GameState::Running)),
                 check_and_spawn_map.run_if(in_state(GameState::Running)),
                 handle_escape_pressed.run_if(in_state(GameState::Running).or_else(in_state(GameState::Paused))),
+                update_bigfoot.run_if(in_state(GameState::Running)),
+                
+                update_player_position.run_if(in_state(GameState::Running)),
+                update_bigfoot_position.run_if(in_state(GameState::Running)),
             ))
         .add_event::<CollisionEvent>()
         .add_systems(OnEnter(GameState::Paused), show_pause_menu)
