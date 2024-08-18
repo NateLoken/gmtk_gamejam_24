@@ -137,7 +137,8 @@ pub fn display_score(_score: Res<Score>) {
 }
 
 pub fn check_collisions(
-    mut player_query: Query<(Entity, &mut Player, &CollisionBox, &Transform, Option<Mut< Invulnerability>>)>,    other_entities_query: Query<(Entity, &Transform, &CollisionBox), Without<Player>>,
+    mut player_query: Query<(Entity, &mut Player, &CollisionBox, &Transform, Option<Mut< Invulnerability>>)>,    
+    other_entities_query: Query<(Entity, &Transform, &CollisionBox), (Without<Player>, Without<Line>)>,
     mut collision_events: EventWriter<CollisionEvent>,
     points_query: Query<(Entity, &Transform), With<PointMarker>>,
     mut score: ResMut<Score>,
@@ -169,23 +170,22 @@ pub fn check_collisions(
             }
         }
     }
-    for (enemy_entity, enemy_box, enemy_transform) in other_entities_query.iter() {
-        let enemy_min_x = enemy_box.translation.x - enemy_transform.width / 2.0;
-        let enemy_max_x = enemy_box.translation.x + enemy_transform.width / 2.0;
-        let enemy_min_y = enemy_box.translation.y - enemy_transform.height / 2.0;
-        let enemy_max_y = enemy_box.translation.y + enemy_transform.height / 2.0;
+    for (attack_entity, attack_transform, attack_box) in line_query.iter() {
+        let attack_min_x = attack_transform.translation.x - attack_box.width / 2.0;
+        let attack_max_x = attack_transform.translation.x + attack_box.width / 2.0;
+        let attack_min_y = attack_transform.translation.y - attack_box.height / 2.0;
+        let attack_max_y = attack_transform.translation.y + attack_box.height / 2.0;
 
-        for (line_entity, line_box, line_transform) in line_query.iter() {
-            let line_min_x = line_box.translation.x - line_transform.width / 2.0;
-            let line_max_x = line_box.translation.x + line_transform.width / 2.0;
-            let line_min_y = line_box.translation.y - line_transform.height / 2.0;
-            let line_max_y = line_box.translation.y + line_transform.height / 2.0;
+        for (enemy_entity, enemy_transform, enemy_box) in other_entities_query.iter() {
+            let enemy_min_x = enemy_transform.translation.x - enemy_box.width / 2.0;
+            let enemy_max_x = enemy_transform.translation.x + enemy_box.width / 2.0;
+            let enemy_min_y = enemy_transform.translation.y - enemy_box.height / 2.0;
+            let enemy_max_y = enemy_transform.translation.y + enemy_box.height / 2.0;
 
-            // Check for collision
-            if line_max_x > enemy_min_x
-                && line_min_x < enemy_max_x
-                && line_max_y > enemy_min_y
-                && line_min_y < enemy_max_y
+            if attack_max_x > enemy_min_x
+                && attack_min_x < enemy_max_x
+                && attack_max_y > enemy_min_y
+                && attack_min_y < enemy_max_y
             {
                 // Call the kill_enemy function
                 score.increment();
@@ -480,32 +480,37 @@ fn ranged_attack(
     asset_server: Res<AssetServer>,
 ) {
     
-    let direction = mouse_position - player_position;
+    // Calculate direction from player to mouse
+    let direction = (mouse_position - player_position).normalize();
     
-    let length = direction.length();
+    // Set the desired line length
+    let line_length = 1100.0;
 
-    // Calculate the midpoint between the player and the mouse
-    let midpoint = player_position + direction / 2.0;
+    // Calculate the endpoint of the line
+    let end_point = player_position + direction * line_length;
 
-    // Correct rotation angle
+    // Calculate the midpoint of the line for positioning the sprite
+    let midpoint = (player_position + end_point) / 2.0;
+
+    // Calculate the angle for proper rotation
     let angle = direction.y.atan2(direction.x);
 
-    // Load a small texture for the line (e.g., 1x1 pixel)
+    // Load the texture for the line
     let line_texture_handle = asset_server.load("red_line.png");
 
-    // Spawn the line as a sprite with a bounding box and a lifetime
+    // Spawn the line as a sprite with a bounding box
     commands.spawn(SpriteBundle {
         texture: line_texture_handle,
         transform: Transform {
-            translation: Vec3::new(midpoint.x, midpoint.y, 0.0), // Center the line between the player and the mouse
-            rotation: Quat::from_rotation_z(angle),   // Rotate to face the mouse position
-            scale: Vec3::new(length, 2.0, 1.0),       // Scale to the length, and set the thickness
+            translation: Vec3::new(midpoint.x, midpoint.y, 0.0), // Center the line between the player and the endpoint
+            rotation: Quat::from_rotation_z(angle),   // Rotate to face the endpoint
+            scale: Vec3::new(line_length, 2.0, 1.0),       // Scale to the length, and set the thickness
             ..Default::default()
         },
         ..Default::default()
     })
     .insert(Line)
-    .insert(CollisionBox::new(1100.0, 50.0)) // Add a bounding box for collision detection
+    .insert(CollisionBox::new(line_length, 50.0)) // Adjust the bounding box to cover the entire line
     .insert(Lifetime {
         timer: Timer::from_seconds(0.1, TimerMode::Once),
     });
