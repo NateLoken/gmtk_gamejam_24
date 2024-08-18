@@ -947,10 +947,11 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut state: 
 
     commands.spawn((
         SpriteBundle {
-            texture: asset_server.load("../assets/blue_box.png"),
+            texture: asset_server.load("../assets/default_guy.png"),
             transform: Transform::from_xyz(100., 0., 0.),
             sprite: Sprite {
                 color: Color::srgba(1.0, 1.0, 1.0, 1.0), // Ensure the sprite starts fully visible
+                custom_size: Some(Vec2 { x:150., y:150. }),
                 ..Default::default()
             },
             ..default()
