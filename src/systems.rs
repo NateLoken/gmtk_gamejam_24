@@ -1,12 +1,14 @@
+use bevy::input::keyboard::Key;
 use bevy::input::mouse::{self, MouseMotion};
 use bevy::prelude::*;
 use bevy::sprite::MaterialMesh2dBundle;
+use bevy_quickmenu::*;
 use bevy::utils::HashSet;
 use bevy::window::PrimaryWindow;
 use bevy::ui::{AlignItems, JustifyContent, Val, UiRect, Style};
 use crate::components::{Direction, DirectionComponent, MovementSpeed, CollisionBox, Player, Tag, EnemySpawnTimer};
 use crate::events::{CollisionEvent, Score};
-use crate::{Ability, CooldownUi, Cooldowns, HealthText, Invulnerability, Lifetime, MousePosition, PointMarker, Points, ScoreText};
+use crate::{Ability, CooldownUi, Cooldowns, CurrentGameState, GameState, HealthText, Invulnerability, Lifetime, MousePosition, PauseMenu, PointMarker, Points, ScoreText};
 use crate::Line;
 use rand::Rng;
 use std::f32::consts::PI;
@@ -239,6 +241,21 @@ pub fn check_collisions(
 }
 }
 
+
+pub fn handle_escape_pressed(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut state: ResMut<NextState<GameState>>,
+    mut curr_state: ResMut<State<GameState>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Escape) {
+        println!("gaming");
+        if *curr_state.get() == GameState::Running {
+            state.set(GameState::Paused);
+        } else if *curr_state.get() == GameState::Paused {
+            state.set(GameState::Running);
+        }
+    }
+}
 
 pub fn pathfind_towards_player(
     player_query: Query<&Transform, With<Player>>, // Get the player's transform
@@ -773,8 +790,53 @@ pub fn update_ui_text(
     }
 }
 
-pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn show_pause_menu(mut query: Query<&mut Visibility, With<PauseMenu>>) {
+    for mut visibility in query.iter_mut() {
+        *visibility = Visibility::Visible;
+    }
+}
+
+pub fn hide_pause_menu(mut query: Query<&mut Visibility, With<PauseMenu>>) {
+    for mut visibility in query.iter_mut() {
+        *visibility = Visibility::Hidden;
+    }
+}
+
+pub fn setup_pause_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn((
+        NodeBundle {
+            style: Style {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                position_type: PositionType::Absolute,
+                ..Default::default()
+            },
+            background_color: Color::srgba(0.0, 0.0, 0.0, 0.7).into(), // Semi-transparent background
+            visibility: Visibility::Hidden, // Initially hidden
+            ..Default::default()
+        },
+        PauseMenu,
+    ))
+    .with_children(|parent| {
+        parent.spawn(TextBundle {
+            text: Text::from_section(
+                "Game Paused\nPress Esc to Resume",
+                TextStyle {
+                    font: asset_server.load("FiraSans-Bold.ttf"),
+                    font_size: 60.0,
+                    color: Color::WHITE,
+                },
+            ),
+            ..Default::default()
+        });
+    });
+}
+
+pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut state: ResMut<NextState<GameState>>) {
     commands.spawn(Camera2dBundle::default());
+    state.set(GameState::Running);
     commands.spawn(
         TextBundle::from_section(
             "WASD to Move around, Q to Melee, E for Ranged, T for AoE, F to Dash",
@@ -922,6 +984,7 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     .insert(Cooldowns::new()); // Initialize cooldowns for abilities)
     //.insert(Invulnerability::new(0.3));
 
+    //state.state = GameState::Running;    
     commands.insert_resource(EnemySpawnTimer::new(10, 750.)); 
 }
 

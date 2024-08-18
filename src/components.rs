@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_quickmenu::*;
 
 #[derive(Component, PartialEq)]
 pub enum Direction {
@@ -152,6 +153,22 @@ impl Cooldowns {
         }
     }
 }
+#[derive(Clone, Copy, Default, Eq, PartialEq, Debug, Hash, States)]
+pub enum GameState {
+    #[default]
+    Running,
+    Menu,
+    Paused,
+}
+
+#[derive(Resource)]
+pub struct CurrentGameState {
+    pub(crate) state: GameState,
+}
+#[derive(Component)]
+pub struct PauseMenu;
+
+
 
 #[derive(Component)]
 pub struct MovementSpeed(pub f32);
