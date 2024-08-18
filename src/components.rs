@@ -1,6 +1,6 @@
 //use bevy::prelude::{Component, Transform};
 use bevy::prelude::*;
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 // Common Components
 #[derive(Component)]
@@ -82,12 +82,22 @@ pub struct Lifetime {
 #[derive(Component)]
 pub struct Enemy;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
 pub enum Ability {
     Dash,
     Attack,
     Ranged,
     Aoe,
+}
+impl fmt::Display for Ability {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Ability::Attack => write!(f, "Attack"),
+            Ability::Ranged => write!(f, "Ranged"),
+            Ability::Dash => write!(f, "Dash"),
+            Ability::Aoe => write!(f, "Bladestorm"),
+        }
+    }
 }
 
 #[derive(Component)]
@@ -119,9 +129,10 @@ impl Cooldowns {
         }
     }
 
-    pub fn get_cooldown(&mut self, ability: Ability) -> Option<f32> {
-        if let Some(timer) = self.cooldowns.get_mut(&ability) {
-            Some(timer.remaining_secs())
+    pub fn get_cooldown(&self, ability: Ability) -> Option<f32> {
+        if let Some(timer) = self.cooldowns.get(&ability) {
+            let remaining_time = timer.duration().as_secs_f32() - timer.elapsed_secs();
+            Some(remaining_time.max(0.0)) // Ensure it never goes negative
         } else {
             None
         }

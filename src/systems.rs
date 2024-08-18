@@ -10,6 +10,7 @@ use crate::events::{CollisionEvent};
 use crate::{GameState, MAP_SPIRITE};
 use rand::Rng;
 use std::f32::consts::PI;
+use std::time::Duration;
 
 use crate::{EnemyCount, GameTextures, MouseCoords, ENEMY_SPRITE, LINE_SPRITE, PLAYER_SPRITE};
 // Systems Implementation
@@ -63,10 +64,24 @@ pub fn camera_follow_player(
     }
 }
 
-pub fn enemy_killed(score: &mut ResMut<Score>, mut player: &mut Player) {
+pub fn enemy_killed(score: &mut ResMut<Score>, mut player: &mut Player, cooldowns_query: &mut Query<&mut Cooldowns>,) {
     score.increment();
     player.heal(1);
     println!("Score: {}", score.get_enemies_killed());
+     // Apply cooldown reduction to all abilities
+     // Apply cooldown reduction to all abilities
+    for mut cooldowns in cooldowns_query.iter_mut() {
+        for timer in cooldowns.cooldowns.values_mut() {
+            // Reduce each ability's cooldown by 0.05 seconds, but ensure it doesn't go below zero
+            let remaining_time = timer.duration().as_secs_f32();
+            if remaining_time > 0.05 {
+                let new_duration = remaining_time - 0.05;
+                timer.set_duration(Duration::from_secs_f32(new_duration));
+            } else {
+                timer.set_duration(Duration::from_secs_f32(0.0)); // Set to zero if it's below 0.05 seconds
+            }
+        }
+    }
 }
 
 pub fn display_score(_score: Res<Score>) {
@@ -85,6 +100,7 @@ pub fn check_collisions(
     mut despawned_entities: Local<HashSet<Entity>>,  // Track despawned entities
     line_query: Query<(Entity, &Transform, &CollisionBox), With<Line>>,
     mut exit: EventWriter<AppExit>, // Add the AppExit event writer
+    mut cooldowns_query: Query<&mut Cooldowns>,
 ) {
     for (enemy_entity, transform, bounding_box) in other_entities_query.iter() {
         let enemy_min_x = transform.translation.x - bounding_box.width / 2.0;
@@ -101,7 +117,7 @@ pub fn check_collisions(
                 && point.y < enemy_max_y
             {
                 // Call the kill_enemy function
-                enemy_killed(&mut score,&mut player);
+                enemy_killed(&mut score,&mut player, &mut cooldowns_query);
                 
 
                 // Despawn the enemy
@@ -301,16 +317,26 @@ pub fn update_cooldowns_ui(
         // Update the UI text for each ability
         for (i, mut text) in text_query.iter_mut().enumerate() {
             let ability_text = match i {
-                0 => format!("Attack: {:.1}s", cooldowns.get_cooldown(Ability::Attack).unwrap_or(0.0)),
-                1 => format!("Ranged: {:.1}s", cooldowns.get_cooldown(Ability::Ranged).unwrap_or(0.0)),
-                2 => format!("Dash: {:.1}s", cooldowns.get_cooldown(Ability::Dash).unwrap_or(0.0)),
-                3 => format!("Aoe: {:.1}s", cooldowns.get_cooldown(Ability::Aoe).unwrap_or(0.0)),
+                0 => format_cooldown_text("Attack", cooldowns.get_cooldown(Ability::Attack)),
+                1 => format_cooldown_text("Ranged", cooldowns.get_cooldown(Ability::Ranged)),
+                2 => format_cooldown_text("Dash", cooldowns.get_cooldown(Ability::Dash)),
+                3 => format_cooldown_text("Aoe", cooldowns.get_cooldown(Ability::Aoe)),
                 _ => "Unknown Ability".to_string(),
             };
 
             text.sections[0].value = ability_text;
         }
     }
+}
+
+fn format_cooldown_text(name: &str, cooldown: Option<f32>) -> String {
+    let display_time = cooldown.unwrap_or(0.0);
+    let display_time = if display_time > 0.0 {
+        display_time
+    } else {
+        0.0
+    };
+    format!("{}: {:.1}s", name, display_time)
 }
 
 pub fn update_ui_text(
