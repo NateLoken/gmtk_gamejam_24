@@ -70,16 +70,13 @@ pub fn enemy_killed(score: &mut ResMut<Score>, mut player: &mut Player, cooldown
     println!("Score: {}", score.get_enemies_killed());
      // Apply cooldown reduction to all abilities
      // Apply cooldown reduction to all abilities
-    for mut cooldowns in cooldowns_query.iter_mut() {
+     for mut cooldowns in cooldowns_query.iter_mut() {
         for timer in cooldowns.cooldowns.values_mut() {
-            // Reduce each ability's cooldown by 0.05 seconds, but ensure it doesn't go below zero
-            let remaining_time = timer.duration().as_secs_f32();
-            if remaining_time > 0.05 {
-                let new_duration = remaining_time - 0.05;
-                timer.set_duration(Duration::from_secs_f32(new_duration));
-            } else {
-                timer.set_duration(Duration::from_secs_f32(0.0)); // Set to zero if it's below 0.05 seconds
-            }
+            // Calculate the new elapsed time, ensuring it doesn't go below zero
+            let elapsed_time = timer.elapsed_secs() + 0.05;
+
+            // Manually set the timer's tick to the new elapsed time
+            timer.set_elapsed(Duration::from_secs_f32(elapsed_time.min(timer.duration().as_secs_f32())));
         }
     }
 }
