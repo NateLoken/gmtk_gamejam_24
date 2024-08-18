@@ -1,5 +1,5 @@
 //use bevy::prelude::{Component, Transform};
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::HashSet};
 use std::{collections::HashMap, fmt};
 
 // Common Components
@@ -138,6 +138,14 @@ impl Cooldowns {
         }
     }
     
+}
+
+#[derive(Component)]
+pub struct Map;
+
+#[derive(Default, Resource)]
+pub struct MapGrid {
+    pub positions: HashSet<(i32, i32)>, // A set to track the positions of maps on the grid
 }
 
 #[derive(Resource)]

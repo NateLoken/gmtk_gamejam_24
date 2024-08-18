@@ -8,7 +8,7 @@ pub struct EnemyPlugin;
 
 impl Plugin for EnemyPlugin {
    fn build(&self, app: &mut App) {
-       app.add_systems(Update, enemy_spawn_system.run_if(on_timer(Duration::from_secs(1))).run_if(in_state(GameState::Running)))
+       app.add_systems(Update, enemy_spawn_system.run_if(on_timer(Duration::from_secs(1))).run_if(in_state(GameState::Paused)))
            .add_systems(FixedUpdate, (player_tracking_system, enemy_movement_system).run_if(in_state(GameState::Running)));
    } 
 }

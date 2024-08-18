@@ -5,7 +5,7 @@ use bevy::sprite::MaterialMesh2dBundle;
 use bevy::utils::HashSet;
 use bevy::window::PrimaryWindow;
 use bevy::ui::{AlignItems, JustifyContent, Val, UiRect, Style};
-use crate::components::{Ability, CooldownUi, HealthText, Line, Invulnerability, ScoreText, Score, Points, PointMarker, PauseMenu, MousePosition , Lifetime, Cooldowns, DirectionComponent, MovementSpeed, CollisionBox, Player, Tag};
+use crate::components::{Ability, CollisionBox, CooldownUi, Cooldowns, DirectionComponent, HealthText, Invulnerability, Lifetime, Line, Map, MapGrid, MousePosition, MovementSpeed, PauseMenu, Player, PointMarker, Points, Score, ScoreText, Tag};
 use crate::events::{CollisionEvent};
 use crate::{GameState, MAP_SPIRITE};
 use rand::Rng;
@@ -357,6 +357,67 @@ pub fn update_ui_text(
     }
 }
 
+const MAP_WIDTH: f32 = 2672.0*4.0;
+const MAP_HEIGHT: f32 = 1312.0*4.0;
+const MAP_SPAWN_THRESHOLD: f32 = 500.0; // Adjust as necessary
+
+
+pub fn check_and_spawn_map(
+    mut commands: Commands,
+    player_query: Query<&Transform, With<Player>>,
+    mut map_query: Query<(Entity, &Transform), With<Map>>,
+    mut map_grid: ResMut<MapGrid>,
+    game_textures: Res<GameTextures>,
+) {
+    if let Ok(player_transform) = player_query.get_single() {
+        let player_pos = player_transform.translation;
+
+        // Calculate the player's grid position
+        let player_grid_x = (player_pos.x / MAP_WIDTH).round() as i32;
+        let player_grid_y = (player_pos.y / MAP_HEIGHT).round() as i32;
+
+        // Check the surrounding 8 grid positions and spawn maps if necessary
+        for dx in -1..=1 {
+            for dy in -1..=1 {
+                let grid_x = player_grid_x + dx;
+                let grid_y = player_grid_y + dy;
+
+                if !map_grid.positions.contains(&(grid_x, grid_y)) {
+                    // Spawn a new map at this grid position
+                    commands.spawn((
+                        SpriteBundle {
+                            texture: game_textures.map.clone(),
+                            transform: Transform {
+                                translation: Vec3::new(grid_x as f32 * MAP_WIDTH, grid_y as f32 * MAP_HEIGHT, 0.0),
+                                scale: Vec3::new(4.0, 4.0, 0.0),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        },
+                        Map,
+                    ));
+                    // Add the new map's position to the grid
+                    map_grid.positions.insert((grid_x, grid_y));
+                }
+            }
+        }
+
+        // Now, clean up maps that are not adjacent to the player's position
+        for (entity, map_transform) in map_query.iter_mut() {
+            let map_pos = map_transform.translation;
+            let map_grid_x = (map_pos.x / MAP_WIDTH).round() as i32;
+            let map_grid_y = (map_pos.y / MAP_HEIGHT).round() as i32;
+
+            // Check if the map is within a 3x3 grid around the player
+            if (map_grid_x - player_grid_x).abs() > 1 || (map_grid_y - player_grid_y).abs() > 1 {
+                // Despawn maps that are outside this grid
+                commands.entity(entity).despawn();
+                map_grid.positions.remove(&(map_grid_x, map_grid_y));
+            }
+        }
+    }
+}
+
 pub fn show_pause_menu(mut query: Query<&mut Visibility, With<PauseMenu>>) {
     for mut visibility in query.iter_mut() {
         *visibility = Visibility::Visible;
@@ -558,7 +619,8 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut state: 
                 },
                 ..Default::default()
             },
-    ));
+    )).insert(Map)
+    ;
 
     commands.insert_resource(game_textures);
     commands.insert_resource(enemy_count);
