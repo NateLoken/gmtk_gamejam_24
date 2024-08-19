@@ -65,8 +65,9 @@ fn main() {
         .init_state::<GameState>()
         //.add_systems(PreStartup, setup_menu)
         .add_systems(Startup, (setup, setup_menu))
-        .add_systems(OnExit(GameState::Menu), (spawn_menu, setup_pause_menu))
+        .add_systems(OnExit(GameState::Menu), (despawn_menu, spawn_menu, setup_pause_menu))
         .add_systems(OnEnter(GameState::Reset),(cleanup_game, setup_menu))
+        .add_systems(OnEnter(GameState::GameOver), setup_game_over_screen)
         //.add_plugin(QuickMenuPlugin::<PauseMenu>::new()) // Add the QuickMenu plugin
         .add_systems(
             FixedUpdate,
@@ -75,7 +76,6 @@ fn main() {
                 //quit_action_system .run_if(in_state(GameState::Menu)),
                 menu_action_system,
                 quit_action_system,
-                despawn_menu,
                 update_timer.run_if(in_state(GameState::Running)),
                 display_score.run_if(in_state(GameState::Running)),
                 check_collisions.run_if(in_state(GameState::Running)),

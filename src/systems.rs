@@ -6,7 +6,7 @@ use bevy::transform::commands;
 use bevy::utils::HashSet;
 use bevy::window::PrimaryWindow;
 use bevy::ui::{AlignItems, JustifyContent, Val, UiRect, Style};
-use crate::components::{Ability, Bigfoot, BigfootState, CollisionBox, CooldownUi, Cooldowns, DirectionComponent, GameTimer, GameTimerText, HealthText, Invulnerability, Lifetime, Line, Map, MapGrid, MenuUI, MousePosition, MovementSpeed, PauseMenu, Player, PointMarker, Points, QuitButton, Resettable, Score, ScoreText, StartButton, Tag};
+use crate::components::{Ability, Bigfoot, BigfootState, CollisionBox, CooldownUi, Cooldowns, DirectionComponent, GameOverUI, GameTimer, GameTimerText, HealthText, Invulnerability, Lifetime, Line, Map, MapGrid, MenuUI, MousePosition, MovementSpeed, PauseMenu, Player, PointMarker, Points, QuitButton, Resettable, Score, ScoreText, StartButton, Tag};
 use crate::events::{CollisionEvent};
 use crate::player::player_spawn_system;
 use crate::{GameState, MAP_SPIRITE};
@@ -104,6 +104,7 @@ pub fn check_collisions(
     bigfoot_query: Query<Entity, With<Bigfoot>>,  // Query all Bigfoot entities
     mut bigfoot_state_query: ParamSet<(Query<&mut Bigfoot>, Query<&Bigfoot>)>, // Use ParamSet for disjoint access
     mut asset_server:  Res<AssetServer>,
+    mut state:  ResMut<NextState<GameState>>,
 ) {
     // Collect all Bigfoot entities into a HashSet for quick lookup
     let bigfoot_entities: HashSet<Entity> = bigfoot_query.iter().collect();
@@ -311,7 +312,7 @@ pub fn check_collisions(
                         }
                     }
     
-                    player.take_damage(100, entity, &mut commands, invulnerability_option.as_deref_mut());
+                    player.take_damage(100, entity, &mut commands, invulnerability_option.as_deref_mut(), &mut state);
             }
                 }
             }
@@ -366,6 +367,7 @@ pub fn update_bigfoot(
     time: Res<Time>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+   mut state: ResMut<NextState<GameState>>,
 ) {
     for (entity, mut bigfoot, mut sprite, mut transform, mut texture) in query.iter_mut() {
         // Update Bigfoot's timer
@@ -399,6 +401,7 @@ pub fn update_bigfoot(
                                     entity,
                                     &mut commands,
                                     Some(invulnerability), // Pass the mutable reference
+                                    &mut state
 
                                 );
                             } else {
@@ -407,6 +410,7 @@ pub fn update_bigfoot(
                                     entity,
                                     &mut commands,
                                     None, 
+                                    &mut state
                                 );
                             }
                         }
@@ -505,6 +509,79 @@ pub fn setup_menu(mut commands:  Commands, asset_server:  Res<AssetServer>) {
             parent.spawn(TextBundle {
                 text: Text::from_section(
                     "Start",
+                    TextStyle {
+                        font: asset_server.load("FiraSans-Bold.ttf"),
+                        font_size: 40.0,
+                        color: Color::WHITE,
+                    },
+                ),
+                ..Default::default()
+            });
+        });
+
+        // Quit button
+        parent.spawn(ButtonBundle {
+            style: Style {
+                width: Val::Px(200.0), 
+                height: Val::Px(65.0),
+                margin: UiRect::all(Val::Px(10.0)),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..Default::default()
+            },
+            background_color: Color::srgba(0.75, 0.25, 0.25, 1.0).into(),
+            ..Default::default()
+        })
+        .insert(QuitButton)
+        .with_children(|parent| {
+            parent.spawn(TextBundle {
+                text: Text::from_section(
+                    "Quit",
+                    TextStyle {
+                        font: asset_server.load("FiraSans-Bold.ttf"),
+                        font_size: 40.0,
+                        color: Color::WHITE,
+                    },
+                ),
+                ..Default::default()
+            });
+        });
+    });
+}
+
+pub fn setup_game_over_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
+    // Root node
+    commands.spawn(NodeBundle {
+        style: Style {
+            width: Val::Percent(100.0), 
+            height: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            ..Default::default()
+        },
+        background_color: Color::srgba(0.15, 0.15, 0.15, 1.0).into(),
+        ..Default::default()
+        
+    }).insert(GameOverUI)
+    .with_children(|parent| {
+        // Play Again button
+        parent.spawn(ButtonBundle {
+            style: Style {
+                width: Val::Px(200.0), 
+                height: Val::Px(65.0),
+                margin: UiRect::all(Val::Px(10.0)),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..Default::default()
+            },
+            background_color: Color::srgba(0.25, 0.75, 0.25, 1.0).into(),
+            ..Default::default()
+        })
+        .insert(StartButton)
+        .with_children(|parent| {
+            parent.spawn(TextBundle {
+                text: Text::from_section(
+                    "Play Again",
                     TextStyle {
                         font: asset_server.load("FiraSans-Bold.ttf"),
                         font_size: 40.0,

@@ -42,6 +42,7 @@ impl Player {
         entity: Entity,
         commands: &mut Commands,
         invulnerability_option: Option<&mut Invulnerability>,
+        state: &mut ResMut<NextState<GameState>>,
     ) {
         if let Some(invulnerability) = invulnerability_option {
             if invulnerability.is_active() {
@@ -59,8 +60,7 @@ impl Player {
         println!("Player took {} damage, remaining health: {}", amount, self.health);
 
         if self.health <= 0 {
-            println!("Player has died. Exiting the game.");
-            //exit.send(AppExit::Success);
+            state.set(GameState::GameOver);
         }
         commands.entity(entity).insert(Invulnerability::new(1.0));
     }
@@ -188,6 +188,10 @@ pub enum BigfootState {
 }
 
 #[derive(Component)]
+pub struct GameOverUI;
+
+
+#[derive(Component)]
 pub struct Resettable;
 
 #[derive(Resource)]
@@ -238,7 +242,7 @@ pub struct CurrentGameState {
 #[derive(Component)]
 pub struct PauseMenu;
 
-#[derive(Component)]
+#[derive(Component, PartialEq)]
 pub struct StartButton;
 
 #[derive(Component)]
