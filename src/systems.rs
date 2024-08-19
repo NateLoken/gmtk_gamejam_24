@@ -136,6 +136,7 @@ pub fn check_collisions(
                     if bigfoot.state != BigfootState::Invulnerable {
                         println!("Bigfoot hit!");
 
+                        bone_hit(&mut asset_server, &mut commands);
                         bigfoot.take_damage(1);
                         println!("{}", bigfoot.health);
                         if (bigfoot.health <= 0) {
@@ -177,6 +178,7 @@ pub fn check_collisions(
 
                         bigfoot.take_damage(1);
                         println!("{}", bigfoot.health);
+                        bone_hit(&mut asset_server, &mut commands);
                         if (bigfoot.health <= 0) {
                             println!("Bigfoot defeated by a point!");
                             commands.entity(*bigfoot_entity).despawn_recursive(); // Fully despawn Bigfoot
@@ -346,6 +348,8 @@ pub fn spawn_bigfoot(
                 health: 5,
                 x: player_position.x,  // Store the initial position
                 y: player_position.y,  // Store the initial position
+                airTexture: asset_server.load("foot.png"),
+                groundTexture: asset_server.load("foot_ground.png")
             },
             CollisionBox::new(256.0, 256.0), // Add collision box
         ));
@@ -356,12 +360,13 @@ pub fn spawn_bigfoot(
 
 
 pub fn update_bigfoot(
-    mut query: Query<(Entity, &mut Bigfoot, &mut Sprite, &mut Transform)>,
+    mut query: Query<(Entity, &mut Bigfoot, &mut Sprite, &mut Transform, &mut Handle<Image>)>,
     mut player_query: Query<(&mut Player, Option<&mut Invulnerability>)>,
     time: Res<Time>,
-    mut commands: Commands
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
 ) {
-    for (entity, mut bigfoot, mut sprite, mut transform) in query.iter_mut() {
+    for (entity, mut bigfoot, mut sprite, mut transform, mut texture) in query.iter_mut() {
         // Update Bigfoot's timer
         bigfoot.timer.tick(time.delta());
 
@@ -376,6 +381,9 @@ pub fn update_bigfoot(
 
                     // Set the timer for the stomp phase
                     bigfoot.timer = Timer::from_seconds(5.0, TimerMode::Once);
+
+                     // Change the texture based on the state
+                     cycle_texture(&mut texture, &bigfoot);
 
                     if let Ok((mut player, mut invulnerability_option)) = player_query.get_single_mut() {
                         let player_position = Vec3 { x: player.x, y: player.y, z: 1.0 };
@@ -422,6 +430,7 @@ pub fn update_bigfoot(
 
                         // Make Bigfoot semi-transparent again
                         sprite.color.set_alpha(0.5);
+                        cycle_texture(&mut texture, &bigfoot);
                     }
                 }
                 BigfootState::Cleanup => todo!(),
@@ -433,6 +442,16 @@ pub fn update_bigfoot(
     }
 }
 
+fn cycle_texture(
+    texture: &mut Handle<Image>,
+    bigfoot: &Bigfoot,
+) {
+    if *texture == bigfoot.airTexture {
+        *texture = bigfoot.groundTexture.clone();
+    } else {
+        *texture = bigfoot.airTexture.clone();
+    }
+}
 
 pub fn update_player_position(
     mut player_query: Query<(&mut Player, &Transform)>,
@@ -761,6 +780,17 @@ pub fn play_hit_swing(
     // Create an entity dedicated to playing our background music
     &mut commands.spawn(AudioBundle {
         source: asset_server.load(selected_sound),
+        settings: PlaybackSettings::ONCE,
+    });
+}
+
+pub fn bone_hit(
+    asset_server: &mut Res<AssetServer>,
+    commands: &mut Commands
+) {
+    // Create an entity dedicated to playing our background music
+    &mut commands.spawn(AudioBundle {
+        source: asset_server.load("./sfx/bone.ogg"),
         settings: PlaybackSettings::ONCE,
     });
 }

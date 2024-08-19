@@ -151,6 +151,8 @@ pub struct Bigfoot {
     pub state: BigfootState,
     pub timer: Timer,
     pub health: i32,
+    pub airTexture: Handle<Image>,
+    pub groundTexture: Handle<Image>,
 }
 
 impl Bigfoot {
@@ -160,7 +162,9 @@ impl Bigfoot {
             state: BigfootState::Invulnerable,
             x,
             y,
-            health: 5, // Initial health value
+            health: 5,
+            airTexture: todo!(),
+            groundTexture: todo!(), // Initial health value
         }
     }
 
