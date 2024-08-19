@@ -41,12 +41,12 @@ impl Player {
             amount: i32,
             invulnerability: Option<&mut Invulnerability>,
         ) {
-            if let Some(mut invuln) = invulnerability {
+             {if let Some(mut invuln) = invulnerability {
                 if invuln.is_active() {
                     println!("Player is invulnerable, no damage taken.");
                     return;
-                } else {
-                    // Reset the invulnerability timer
+                }
+                else {
                     invuln.reset();
                 }
             }
@@ -66,6 +66,7 @@ impl Player {
             }
         }
     }
+}
 
 #[derive(Component)]
 pub struct PointMarker;

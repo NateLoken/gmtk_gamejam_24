@@ -178,7 +178,7 @@ fn ranged_attack(
             .insert(Line)
             .insert(CollisionBox::new(1100.0, 100.0))
             .insert(Lifetime {
-                timer: Timer::from_seconds(0.1, TimerMode::Once)
+                timer: Timer::from_seconds(0.005, TimerMode::Once)
             });
     }
 }
@@ -212,7 +212,7 @@ fn dash_attack(
         .insert(Line)
         .insert(CollisionBox::new(length, SPRITE_SIZE.0))
         .insert(Lifetime {
-            timer: Timer::from_seconds(0.1, TimerMode::Once)
+            timer: Timer::from_seconds(0.005, TimerMode::Once)
         });
 
         commands.entity(player_entity).insert(Invulnerability {
@@ -270,7 +270,7 @@ fn melee_attack(
                     })
                     .insert(PointMarker)
                     .insert(Lifetime {
-                        timer: Timer::from_seconds(0.1, TimerMode::Once),
+                        timer: Timer::from_seconds(0.005, TimerMode::Once),
                     });
             }
         }
@@ -317,7 +317,7 @@ fn aoe_attack(
                     })
                     .insert(PointMarker)
                     .insert(Lifetime {
-                        timer: Timer::from_seconds(0.1, TimerMode::Once),
+                        timer: Timer::from_seconds(0.005, TimerMode::Once),
                     });
             }
         }

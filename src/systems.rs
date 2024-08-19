@@ -88,8 +88,8 @@ pub fn display_score(_score: Res<Score>) {
 
 
 pub fn check_collisions(
-    mut player_query: Query<(Entity, &mut Player, &CollisionBox, &Transform, Option<Mut< Invulnerability>>)>,    
-    other_entities_query: Query<(Entity, &Transform, &CollisionBox), (Without<Player>, Without<Line>)>,
+    mut player_query: Query<(Entity, &mut Player, &CollisionBox, &Transform, Option<Mut<Invulnerability>>)>,    
+    other_entities_query: Query<(Entity, &Transform, &CollisionBox), (Without<Player>, Without<Line>, Without<PointMarker>)>,
     mut collision_events: EventWriter<CollisionEvent>,
     points_query: Query<(Entity, &Transform), With<PointMarker>>,
     mut score: ResMut<Score>,
@@ -101,14 +101,98 @@ pub fn check_collisions(
     mut exit: EventWriter<AppExit>, // Add the AppExit event writer
     mut cooldowns_query: Query<&mut Cooldowns>,
     bigfoot_query: Query<Entity, With<Bigfoot>>,  // Query all Bigfoot entities
-    bigfoot_state_query: Query<&Bigfoot>,
+    mut bigfoot_state_query: ParamSet<(Query<&mut Bigfoot>, Query<&Bigfoot>)>, // Use ParamSet for disjoint access
 ) {
+    // Collect all Bigfoot entities into a HashSet for quick lookup
+    let bigfoot_entities: HashSet<Entity> = bigfoot_query.iter().collect();
+    let mut hit_entities: HashSet<Entity> = HashSet::new(); // Track entities hit in this frame
 
-        // Collect all Bigfoot entities into a HashSet for quick lookup
-        let bigfoot_entities: HashSet<Entity> = bigfoot_query.iter().collect();
+    // Handle Bigfoot-specific logic for line collisions
+    for bigfoot_entity in bigfoot_entities.iter() {
+        if let Ok(mut bigfoot) = bigfoot_state_query.p0().get_mut(*bigfoot_entity) {
+            // Bigfoot collision and health management logic here
+            for (attack_entity, attack_transform, attack_box) in line_query.iter() {
+                if hit_entities.contains(bigfoot_entity) {
+                    println!("already hit");
+                    continue; // Skip if already hit by a point or line in this frame
+                }
 
-        for (enemy_entity, transform, bounding_box) in other_entities_query.iter() {
-            
+                let attack_min_x = attack_transform.translation.x - attack_box.width / 2.0;
+                let attack_max_x = attack_transform.translation.x + attack_box.width / 2.0;
+                let attack_min_y = attack_transform.translation.y - attack_box.height / 2.0;
+                let attack_max_y = attack_transform.translation.y + attack_box.height / 2.0;
+
+                let bigfoot_min_x = bigfoot.x - 250.0;
+                let bigfoot_max_x = bigfoot.x + 250.0;
+                let bigfoot_min_y = bigfoot.y - 250.0;
+                let bigfoot_max_y = bigfoot.y + 250.0;
+
+                if attack_max_x > bigfoot_min_x
+                    && attack_min_x < bigfoot_max_x
+                    && attack_max_y > bigfoot_min_y
+                    && attack_min_y < bigfoot_max_y
+                {
+                    if bigfoot.state != BigfootState::Invulnerable {
+                        println!("Bigfoot hit!");
+
+                        bigfoot.take_damage(1);
+                        println!("{}", bigfoot.health);
+                        if (bigfoot.health <= 0) {
+                            println!("Bigfoot defeated!");
+                            commands.entity(*bigfoot_entity).despawn_recursive(); // Fully despawn Bigfoot
+                        }
+                        
+                    } else {
+                        println!("Bigfoot is invulnerable, skipping collision.");
+                    }
+                    hit_entities.insert(*bigfoot_entity); // Mark Bigfoot as hit
+                    commands.entity(attack_entity).despawn(); // Despawn the line after collision
+                    break;
+                }
+            }
+
+            // Handle point collisions with Bigfoot
+            for (point_entity, point_transform) in points_query.iter() {
+                if hit_entities.contains(bigfoot_entity) {
+                    println!("Bigfoot entity already hit by a point, skipping further checks.");
+                    continue; // Skip if already hit by a point in this frame
+                }
+
+                let point_x = point_transform.translation.x;
+                let point_y = point_transform.translation.y;
+
+                let bigfoot_min_x = bigfoot.x - 250.0;
+                let bigfoot_max_x = bigfoot.x + 250.0;
+                let bigfoot_min_y = bigfoot.y - 250.0;
+                let bigfoot_max_y = bigfoot.y + 250.0;
+
+                if point_x > bigfoot_min_x
+                    && point_x < bigfoot_max_x
+                    && point_y > bigfoot_min_y
+                    && point_y < bigfoot_max_y
+                {
+                    if bigfoot.state != BigfootState::Invulnerable {
+                        println!("Bigfoot hit by a point!");
+
+                        bigfoot.take_damage(1);
+                        println!("{}", bigfoot.health);
+                        if (bigfoot.health <= 0) {
+                            println!("Bigfoot defeated by a point!");
+                            commands.entity(*bigfoot_entity).despawn_recursive(); // Fully despawn Bigfoot
+                        }
+                    } else {
+                        println!("Bigfoot is invulnerable, skipping collision with point.");
+                    }
+                    // Mark Bigfoot as hit and despawn the point
+                    hit_entities.insert(*bigfoot_entity);
+                    println!("Added Bigfoot entity to hit_entities by a point: {:?}", bigfoot_entity);
+                    commands.entity(point_entity).despawn();
+                    break;
+                }
+            }
+        }
+    }
+
     for (enemy_entity, transform, bounding_box) in other_entities_query.iter() {
         let enemy_min_x = transform.translation.x - bounding_box.width / 2.0;
         let enemy_max_x = transform.translation.x + bounding_box.width / 2.0;
@@ -123,32 +207,6 @@ pub fn check_collisions(
                 && point.y > enemy_min_y
                 && point.y < enemy_max_y
             {
-
-                for (bigfoot_entities) in bigfoot_entities.iter() {
-                    for (enemy_entity, transform, bounding_box) in other_entities_query.iter() {
-                        // Check if the enemy is a Bigfoot entity
-                        let mut is_bigfoot = false;
-                        let mut bigfoot_invulnerable = false;
-                    
-                        for (bigfoot) in bigfoot_state_query.iter() {
-                            if enemy_entity == *bigfoot_entities {
-                                is_bigfoot = true;
-                                bigfoot_invulnerable = bigfoot.state == BigfootState::Invulnerable;
-                                break; // We've found a matching Bigfoot entity, no need to continue the loop
-                            }
-                        }
-                    
-                        if is_bigfoot {
-                            if bigfoot_invulnerable {
-                                println!("Bigfoot is invulnerable, skipping collision.");
-                                continue; // Skip this enemy since Bigfoot is invulnerable
-                            } else {
-                                println!("Bigfoot hit!");
-                                // Apply damage logic here if needed, or just continue with regular enemy logic
-                            }
-                        }
-                    }
-                }
                 // Call the kill_enemy function
                 enemy_killed(&mut score,&mut player, &mut cooldowns_query);
                 
@@ -160,7 +218,8 @@ pub fn check_collisions(
             }
         }
     }}
-    for (bigfoot_entities) in bigfoot_entities.iter() {
+
+    
     for (entity, mut player, player_box, player_transform, mut invulnerability_option) in player_query.iter_mut() {
 
     for (attack_entity, attack_transform, attack_box) in line_query.iter() {
@@ -180,36 +239,6 @@ pub fn check_collisions(
                 && attack_max_y > enemy_min_y
                 && attack_min_y < enemy_max_y
             {
-
-                for (enemy_entity, transform, bounding_box) in other_entities_query.iter() {
-                    // Check if the enemy is a Bigfoot entity
-                    let mut is_bigfoot = false;
-                    let mut bigfoot_invulnerable = false;
-
-                    let mut is_bigfoot = false;
-                        let mut bigfoot_invulnerable = false;
-                    
-                        for (bigfoot) in bigfoot_state_query.iter() {
-                            if enemy_entity == *bigfoot_entities {
-                                is_bigfoot = true;
-                                bigfoot_invulnerable = bigfoot.state == BigfootState::Invulnerable;
-                                break; // We've found a matching Bigfoot entity, no need to continue the loop
-                            }
-                        }
-                    
-                        if is_bigfoot {
-                            if bigfoot_invulnerable {
-                                println!("Bigfoot is invulnerable, skipping collision.");
-                                continue; // Skip this enemy since Bigfoot is invulnerable
-                            } else {
-                                println!("Bigfoot hit!");
-                                // Apply damage logic here if needed, or just continue with regular enemy logic
-                            }
-                        }
-                
-                    // Handle other enemy entities
-                    // ... (your existing collision handling logic)
-                }
                 // Call the kill_enemy function
                 enemy_killed(&mut score,&mut player, &mut cooldowns_query);
 
@@ -219,53 +248,69 @@ pub fn check_collisions(
                 // Despawn the line after it collides with an enemy
                 //commands.entity(line_entity).despawn();
                 break;
-            }}
+            }
         }}
     }
-
+        for (entity, mut player, player_box, player_transform, mut invulnerability_option) in player_query.iter_mut() {
+            let player_min_x = player_transform.translation.x - player_box.width / 2.0;
+            let player_max_x = player_transform.translation.x + player_box.width / 2.0;
+            let player_min_y = player_transform.translation.y - player_box.height / 2.0;
+            let player_max_y = player_transform.translation.y + player_box.height / 2.0;
+            if bigfoot_query.get(entity).is_ok() {
+                println!("bigfoot");
+                continue; // Skip collision checks for Bigfoot
+            }
+            
+            if let Some(ref mut invulnerability) = invulnerability_option {
+                if invulnerability.is_active() {
+                    continue; // Skip damage application if invulnerable
+                }
+            }
     
-    for (entity, mut player, player_box, player_transform, mut invulnerability_option) in player_query.iter_mut() {
-        let player_min_x = player_transform.translation.x - player_box.width / 2.0;
-        let player_max_x = player_transform.translation.x + player_box.width / 2.0;
-        let player_min_y = player_transform.translation.y - player_box.height / 2.0;
-        let player_max_y = player_transform.translation.y + player_box.height / 2.0;
-
-        if bigfoot_entities.contains(&enemy_entity) {
-            println!("Skipping Bigfoot entity");
-            continue; // Skip collision checks for Bigfoot entities
-        }
-        
-        if let Some(ref mut invulnerability) = invulnerability_option {
-            if invulnerability.is_active() {
-                continue; // Skip damage application if invulnerable
+            for (enemy_entity, enemy_transform, enemy_box) in other_entities_query.iter() {
+                let enemy_min_x = enemy_transform.translation.x - enemy_box.width / 2.0;
+                let enemy_max_x = enemy_transform.translation.x + enemy_box.width / 2.0;
+                let enemy_min_y = enemy_transform.translation.y - enemy_box.height / 2.0;
+                let enemy_max_y = enemy_transform.translation.y + enemy_box.height / 2.0;
+                if bigfoot_entities.contains(&enemy_entity) || hit_entities.contains(&enemy_entity) {
+                    continue; // Skip Bigfoot and already hit entities
+                }
+    
+                if player_max_x > enemy_min_x
+                    && player_min_x < enemy_max_x
+                    && player_max_y > enemy_min_y
+                    && player_min_y < enemy_max_y
+                {
+    
+                if player_max_x > enemy_min_x
+                    && player_min_x < enemy_max_x
+                    && player_max_y > enemy_min_y
+                    && player_min_y < enemy_max_y
+                {
+                    // Handle collision, but only if player is not invulnerable
+                    if let Some(ref mut invulnerability) = invulnerability_option {
+                        if invulnerability.is_active() {
+                            continue;
+                        }
+                    }
+    
+                    player.take_damage(100, invulnerability_option.as_deref_mut());
+                }
             }
         }
 
-        for (enemy_entity, enemy_transform, enemy_box) in other_entities_query.iter() {
-            let enemy_min_x = enemy_transform.translation.x - enemy_box.width / 2.0;
-            let enemy_max_x = enemy_transform.translation.x + enemy_box.width / 2.0;
-            let enemy_min_y = enemy_transform.translation.y - enemy_box.height / 2.0;
-            let enemy_max_y = enemy_transform.translation.y + enemy_box.height / 2.0;
-
-            if player_max_x > enemy_min_x
-                && player_min_x < enemy_max_x
-                && player_max_y > enemy_min_y
-                && player_min_y < enemy_max_y
             {
-
-            if player_max_x > enemy_min_x
-                && player_min_x < enemy_max_x
-                && player_max_y > enemy_min_y
-                && player_min_y < enemy_max_y
-            {
-                // Handle collision, but only if player is not invulnerable
-                player.take_damage(100, invulnerability_option.as_deref_mut());
+                
             }
         }
     }
-}
-}
-}
+
+
+
+
+
+
+
 
 pub fn spawn_bigfoot(
     mut commands: Commands,
@@ -280,7 +325,7 @@ pub fn spawn_bigfoot(
             SpriteBundle {
                 texture: asset_server.load("foot.png"), // Assuming a texture is available
                 transform: Transform {
-                    translation: Vec3::new(100., player_position.y, 0.0),
+                    translation: Vec3::new(100., player_position.y, 1.0),
                     //translation: Vec3::new(player_position.x, player_position.y, 0.0),
                     scale: Vec3::new(0.7, 0.7, 1.0), // Adjusted scale for a 250 radius
                     ..Default::default()
@@ -324,8 +369,8 @@ pub fn update_bigfoot(
                     bigfoot.timer = Timer::from_seconds(5.0, TimerMode::Once);
 
                     if let Ok((mut player, mut invulnerability_option)) = player_query.get_single_mut() {
-                        let player_position = Vec3 { x: player.x, y: player.y, z: 0.0 };
-                        let bigfoot_position = Vec3 { x: bigfoot.x, y: bigfoot.y, z: 0.0 };
+                        let player_position = Vec3 { x: player.x, y: player.y, z: 1.0 };
+                        let bigfoot_position = Vec3 { x: bigfoot.x, y: bigfoot.y, z: 1.0 };
 
                         // If the player is within the 250 radius, apply damage
                         let distance = player_position.distance(bigfoot_position);
