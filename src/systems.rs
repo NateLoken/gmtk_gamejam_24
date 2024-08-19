@@ -384,7 +384,7 @@ pub fn update_bigfoot(
 
                      // Change the texture based on the state
                      cycle_texture(&mut texture, &bigfoot);
-
+                     
                     if let Ok((mut player, mut invulnerability_option)) = player_query.get_single_mut() {
                         let player_position = Vec3 { x: player.x, y: player.y, z: 1.0 };
                         let bigfoot_position = Vec3 { x: bigfoot.x, y: bigfoot.y, z: 1.0 };
@@ -476,8 +476,11 @@ pub fn handle_escape_pressed(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<NextState<GameState>>,
     mut curr_state: ResMut<State<GameState>>,
+    mut commands: Commands,
+    mut asset_server:  Res<AssetServer>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
+        menu_sound(&asset_server, &mut commands);
         println!("gaming");
         if *curr_state.get() == GameState::Running {
             state.set(GameState::Paused);
@@ -736,6 +739,17 @@ pub fn setup_pause_menu(mut commands: Commands, asset_server: Res<AssetServer>) 
     });
 }
 
+pub fn menu_sound(
+    asset_server: &Res<AssetServer>,
+    commands: &mut Commands
+) {
+    // Create an entity dedicated to playing our background music
+    &mut commands.spawn(AudioBundle {
+        source: asset_server.load("./sfx/select.ogg"),
+        settings: PlaybackSettings::ONCE,
+    });
+}
+
 pub fn play_empty_swing(
     asset_server: Res<AssetServer>,
     mut commands: &mut Commands
@@ -813,6 +827,17 @@ pub fn aoe_sound(
     // Create an entity dedicated to playing our background music
     &mut commands.spawn(AudioBundle {
         source: asset_server.load("./sfx/aoe.ogg"),
+        settings: PlaybackSettings::ONCE,
+    });
+}
+
+pub fn stomp_sound(
+    asset_server: &Res<AssetServer>,
+    commands: &mut Commands
+) {
+    // Create an entity dedicated to playing our background music
+    &mut commands.spawn(AudioBundle {
+        source: asset_server.load("./sfx/stomp.ogg"),
         settings: PlaybackSettings::ONCE,
     });
 }
