@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-use crate::{spawn_bigfoot, GameTextures, MouseCoords, BASE_SPEED, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
+use crate::{play_empty_swing, spawn_bigfoot, GameTextures, MouseCoords, BASE_SPEED, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
 use crate::components::{Ability, CollisionBox, Cooldowns, GameState, Invulnerability, Lifetime, Line, Player, PointMarker, Points, Velocity}; 
 use bevy::prelude::*;
 
@@ -80,13 +80,14 @@ fn player_movement_system(
 }
 
 fn ability_system(
-    commands: Commands,
+    mut commands: Commands,
     kb: Res<ButtonInput<KeyCode>>,
     mut cooldown_query: Query<&mut Cooldowns>,
     mouse_coords: Res<MouseCoords>,
     player_query: Query<(Entity, &mut Transform), With<Player>>,
     game_textures: Res<GameTextures>,
-    points: ResMut<Points>
+    points: ResMut<Points>,
+    asset_server: Res<AssetServer>,
 ) {
     if let Ok(mut cooldowns) = cooldown_query.get_single_mut() {
         if kb.just_pressed(KeyCode::KeyE) {
@@ -114,12 +115,13 @@ fn ability_system(
         } else if kb.just_pressed(KeyCode::KeyQ) {
             if cooldowns.is_ready(Ability::Attack) {
                 melee_attack(
-                    commands,
+                    &mut commands,
                     player_query,
                     mouse_coords,
                     game_textures,
                     points);
                 cooldowns.reset(Ability::Attack);
+                play_empty_swing(asset_server, &mut commands);
             } else {
                 println!("Arc ability is on cooldown!");
             }
@@ -225,7 +227,7 @@ fn dash_attack(
 }
 
 fn melee_attack(
-    mut commands: Commands,
+    commands: &mut Commands,
     player_query: Query<(Entity, &mut Transform), With<Player>>,
     mouse_coords: Res<MouseCoords>,
     game_textures: Res<GameTextures>,

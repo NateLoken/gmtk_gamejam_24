@@ -102,6 +102,7 @@ pub fn check_collisions(
     mut cooldowns_query: Query<&mut Cooldowns>,
     bigfoot_query: Query<Entity, With<Bigfoot>>,  // Query all Bigfoot entities
     mut bigfoot_state_query: ParamSet<(Query<&mut Bigfoot>, Query<&Bigfoot>)>, // Use ParamSet for disjoint access
+    mut asset_server:  Res<AssetServer>,
 ) {
     // Collect all Bigfoot entities into a HashSet for quick lookup
     let bigfoot_entities: HashSet<Entity> = bigfoot_query.iter().collect();
@@ -215,7 +216,7 @@ pub fn check_collisions(
                 if !bigfoot_query.get(enemy_entity).is_ok() {
                         // Call the kill_enemy function
                         enemy_killed(&mut score,&mut player, &mut cooldowns_query);
-
+                        play_hit_swing(&mut asset_server, &mut commands);
                     // Despawn the enemy
                 commands.entity(enemy_entity).despawn();
                 enemy_counter.0 -= 1;
@@ -252,7 +253,7 @@ pub fn check_collisions(
                 if !bigfoot_query.get(enemy_entity).is_ok() {
                         // Call the kill_enemy function
                     enemy_killed(&mut score,&mut player, &mut cooldowns_query);
-
+                    play_hit_swing(&mut asset_server, &mut commands);
                     // Despawn the enemy
                     commands.entity(enemy_entity).despawn();
                 }
@@ -715,6 +716,55 @@ pub fn setup_pause_menu(mut commands: Commands, asset_server: Res<AssetServer>) 
         });
     });
 }
+
+pub fn play_empty_swing(
+    asset_server: Res<AssetServer>,
+    mut commands: &mut Commands
+) {
+    let sound1 = "sfx/swing1.ogg";
+    let sound2 = "sfx/swing2.ogg";
+    let sound3 = "sfx/swing3.ogg";
+
+    // Collect the sounds into a vector
+    let sounds = vec![sound1, sound2, sound3];
+
+    // Generate a random index to pick a sound
+    let mut rng = rand::thread_rng();
+    let random_index = rng.gen_range(0..sounds.len());
+
+    // Select the sound based on the random index
+    let selected_sound = sounds[random_index];
+    // Create an entity dedicated to playing our background music
+    commands.spawn(AudioBundle {
+        source: asset_server.load(selected_sound),
+        settings: PlaybackSettings::ONCE,
+    });
+}
+
+pub fn play_hit_swing(
+    asset_server: &mut Res<AssetServer>,
+    commands: &mut Commands
+) {
+    let sound1 = "sfx/hit1.ogg";
+    let sound2 = "sfx/hit2.ogg";
+    let sound3 = "sfx/hit3.ogg";
+
+    // Collect the sounds into a vector
+    let sounds = vec![sound1, sound2, sound3];
+
+    // Generate a random index to pick a sound
+    let mut rng = rand::thread_rng();
+    let random_index = rng.gen_range(0..sounds.len());
+
+    // Select the sound based on the random index
+    let selected_sound = sounds[random_index];
+    // Create an entity dedicated to playing our background music
+    &mut commands.spawn(AudioBundle {
+        source: asset_server.load(selected_sound),
+        settings: PlaybackSettings::ONCE,
+    });
+}
+
 
 
 pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut state: ResMut<NextState<GameState>>) {
