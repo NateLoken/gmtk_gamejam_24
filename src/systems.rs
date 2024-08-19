@@ -471,7 +471,7 @@ pub fn update_bigfoot_position(
     }
 }
 
-pub fn setup_menu(mut commands: Commands, asset_server: Res<AssetServer>, materials: ResMut<Assets<ColorMaterial>>) {
+pub fn setup_menu(mut commands:  Commands, asset_server:  Res<AssetServer>) {
     // Root node
     commands.spawn(NodeBundle {
         style: Style {
@@ -545,13 +545,13 @@ pub fn setup_menu(mut commands: Commands, asset_server: Res<AssetServer>, materi
 }
 
 pub fn spawn_menu(
-    commands:  Commands,
+    mut commands: Commands,
     query: Query<Entity, With<MenuUI>>,
     state: ResMut<State<GameState>>,
-    asset_server: Res<AssetServer>,
+    mut asset_server:  Res<AssetServer>,
 ) {
     if *state.get() == GameState::Running || *state.get() == GameState::Paused{
-        game_menus(commands, asset_server)
+        game_menus(&mut commands,  &mut asset_server);
     }
 }
 
@@ -628,8 +628,12 @@ pub fn handle_escape_pressed(
         } else if *curr_state.get() == GameState::Paused {
             state.set(GameState::Running);
         }
+    }else if keyboard_input.just_pressed(KeyCode::KeyB) {
+        if *curr_state.get() == GameState::Paused {
+            state.set(GameState::Menu);
+        }
+    }  
     }
-}
 
 pub fn flicker_system(
     time: Res<Time>,
@@ -868,7 +872,7 @@ pub fn setup_pause_menu(mut commands: Commands, asset_server: Res<AssetServer>) 
     .with_children(|parent| {
         parent.spawn(TextBundle {
             text: Text::from_section(
-                "Game Paused\nPress Esc to Resume",
+                "Game Paused\nPress Esc to Resume\n\n\n 'B' To Go To Main Menu",
                 TextStyle {
                     font: asset_server.load("FiraSans-Bold.ttf"),
                     font_size: 60.0,
@@ -994,8 +998,8 @@ pub fn ranged_sound(
     });
 }
 
-pub fn game_menus(    mut commands: Commands,
-    mut asset_server:  Res<AssetServer>,) {
+pub fn game_menus(    commands: &mut Commands,
+    asset_server:  &mut Res<AssetServer>,) {
     commands.spawn(
         TextBundle::from_section(
             "WASD to Move around, Q to Melee, E for Ranged, T for AoE, F to Dash",
@@ -1148,24 +1152,22 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut state: 
         y: 0.,
     };
 
-    commands.spawn((
-            SpriteBundle {
-                texture: game_textures.map.clone(),
-                transform: Transform { 
-                    //translation: Vec3::new(0., SPRITE_SIZE.1 / 2. + 5., 10.),
-                    scale: Vec3::new(4., 4., 0.),
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-    )).insert(Map)
-    ;
-
      // Create an entity dedicated to playing our background music
      commands.spawn(AudioBundle {
         source: asset_server.load("./beats/back.ogg"),
         settings: PlaybackSettings::LOOP,
     });
+    commands.spawn((
+        SpriteBundle {
+            texture: game_textures.map.clone(),
+            transform: Transform { 
+                //translation: Vec3::new(0., SPRITE_SIZE.1 / 2. + 5., 10.),
+                scale: Vec3::new(4., 4., 0.),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+)).insert(Map);
 
     commands.insert_resource(game_textures);
     commands.insert_resource(enemy_count);
@@ -1174,3 +1176,9 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut state: 
     commands.insert_resource(Points::default());
 }
 
+pub fn cleanup_game(mut commands: Commands, asset_server: Res<AssetServer>, mut state: ResMut<NextState<GameState>>, query: Query<Entity, (Without<Window>, Without<Camera2d>)>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn();
+    }
+    setup(commands, asset_server, state);
+}
