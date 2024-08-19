@@ -85,6 +85,8 @@ pub fn display_score(_score: Res<Score>) {
     //println!("Enemies killed: {}", score.get_enemies_killed());
 }
 
+
+
 pub fn check_collisions(
     mut player_query: Query<(Entity, &mut Player, &CollisionBox, &Transform, Option<Mut< Invulnerability>>)>,    
     other_entities_query: Query<(Entity, &Transform, &CollisionBox), (Without<Player>, Without<Line>)>,
@@ -99,16 +101,14 @@ pub fn check_collisions(
     mut exit: EventWriter<AppExit>, // Add the AppExit event writer
     mut cooldowns_query: Query<&mut Cooldowns>,
     bigfoot_query: Query<Entity, With<Bigfoot>>,  // Query all Bigfoot entities
+    bigfoot_state_query: Query<&Bigfoot>,
 ) {
 
         // Collect all Bigfoot entities into a HashSet for quick lookup
         let bigfoot_entities: HashSet<Entity> = bigfoot_query.iter().collect();
 
         for (enemy_entity, transform, bounding_box) in other_entities_query.iter() {
-            if bigfoot_entities.contains(&enemy_entity) {
-                //println!("Skipping Bigfoot entity");
-                continue; // Skip collision checks for Bigfoot entities
-            }
+            
     for (enemy_entity, transform, bounding_box) in other_entities_query.iter() {
         let enemy_min_x = transform.translation.x - bounding_box.width / 2.0;
         let enemy_max_x = transform.translation.x + bounding_box.width / 2.0;
@@ -123,6 +123,32 @@ pub fn check_collisions(
                 && point.y > enemy_min_y
                 && point.y < enemy_max_y
             {
+
+                for (bigfoot_entities) in bigfoot_entities.iter() {
+                    for (enemy_entity, transform, bounding_box) in other_entities_query.iter() {
+                        // Check if the enemy is a Bigfoot entity
+                        let mut is_bigfoot = false;
+                        let mut bigfoot_invulnerable = false;
+                    
+                        for (bigfoot) in bigfoot_state_query.iter() {
+                            if enemy_entity == *bigfoot_entities {
+                                is_bigfoot = true;
+                                bigfoot_invulnerable = bigfoot.state == BigfootState::Invulnerable;
+                                break; // We've found a matching Bigfoot entity, no need to continue the loop
+                            }
+                        }
+                    
+                        if is_bigfoot {
+                            if bigfoot_invulnerable {
+                                println!("Bigfoot is invulnerable, skipping collision.");
+                                continue; // Skip this enemy since Bigfoot is invulnerable
+                            } else {
+                                println!("Bigfoot hit!");
+                                // Apply damage logic here if needed, or just continue with regular enemy logic
+                            }
+                        }
+                    }
+                }
                 // Call the kill_enemy function
                 enemy_killed(&mut score,&mut player, &mut cooldowns_query);
                 
@@ -134,6 +160,7 @@ pub fn check_collisions(
             }
         }
     }}
+    for (bigfoot_entities) in bigfoot_entities.iter() {
     for (entity, mut player, player_box, player_transform, mut invulnerability_option) in player_query.iter_mut() {
 
     for (attack_entity, attack_transform, attack_box) in line_query.iter() {
@@ -153,6 +180,36 @@ pub fn check_collisions(
                 && attack_max_y > enemy_min_y
                 && attack_min_y < enemy_max_y
             {
+
+                for (enemy_entity, transform, bounding_box) in other_entities_query.iter() {
+                    // Check if the enemy is a Bigfoot entity
+                    let mut is_bigfoot = false;
+                    let mut bigfoot_invulnerable = false;
+
+                    let mut is_bigfoot = false;
+                        let mut bigfoot_invulnerable = false;
+                    
+                        for (bigfoot) in bigfoot_state_query.iter() {
+                            if enemy_entity == *bigfoot_entities {
+                                is_bigfoot = true;
+                                bigfoot_invulnerable = bigfoot.state == BigfootState::Invulnerable;
+                                break; // We've found a matching Bigfoot entity, no need to continue the loop
+                            }
+                        }
+                    
+                        if is_bigfoot {
+                            if bigfoot_invulnerable {
+                                println!("Bigfoot is invulnerable, skipping collision.");
+                                continue; // Skip this enemy since Bigfoot is invulnerable
+                            } else {
+                                println!("Bigfoot hit!");
+                                // Apply damage logic here if needed, or just continue with regular enemy logic
+                            }
+                        }
+                
+                    // Handle other enemy entities
+                    // ... (your existing collision handling logic)
+                }
                 // Call the kill_enemy function
                 enemy_killed(&mut score,&mut player, &mut cooldowns_query);
 
@@ -162,7 +219,7 @@ pub fn check_collisions(
                 // Despawn the line after it collides with an enemy
                 //commands.entity(line_entity).despawn();
                 break;
-            }
+            }}
         }}
     }
 
@@ -173,9 +230,9 @@ pub fn check_collisions(
         let player_min_y = player_transform.translation.y - player_box.height / 2.0;
         let player_max_y = player_transform.translation.y + player_box.height / 2.0;
 
-        if bigfoot_query.get(entity).is_ok() {
-            println!("bigfoot");
-            continue; // Skip collision checks for Bigfoot
+        if bigfoot_entities.contains(&enemy_entity) {
+            println!("Skipping Bigfoot entity");
+            continue; // Skip collision checks for Bigfoot entities
         }
         
         if let Some(ref mut invulnerability) = invulnerability_option {
@@ -225,7 +282,7 @@ pub fn spawn_bigfoot(
                 transform: Transform {
                     translation: Vec3::new(100., player_position.y, 0.0),
                     //translation: Vec3::new(player_position.x, player_position.y, 0.0),
-                    //scale: Vec3::new(500.0, 500.0, 1.0), // Adjusted scale for a 250 radius
+                    scale: Vec3::new(0.7, 0.7, 1.0), // Adjusted scale for a 250 radius
                     ..Default::default()
                 },
                 ..Default::default()
@@ -233,81 +290,15 @@ pub fn spawn_bigfoot(
             Bigfoot {
                 timer: Timer::from_seconds(2.5, TimerMode::Once),
                 state: BigfootState::Invulnerable,
+                health: 5,
                 x: player_position.x,  // Store the initial position
                 y: player_position.y,  // Store the initial position
             },
-            CollisionBox::new(500.0, 500.0), // Add collision box
+            CollisionBox::new(256.0, 256.0), // Add collision box
         ));
     }
 }
 
-
-// pub fn update_bigfoot(
-//     mut commands: Commands,
-//     time: Res<Time>,
-//     mut bigfoot_query: Query<(&mut Bigfoot, &mut Sprite)>,
-//     mut player_query: Query<(&mut Player, Option<&mut Invulnerability>)>,
-// ) {
-//     for (mut bigfoot, mut sprite) in bigfoot_query.iter_mut() {
-//         // Update Bigfoot's timer
-//         bigfoot.timer.tick(time.delta());
-
-//         if bigfoot.timer.just_finished() {
-//             match bigfoot.state {
-//                 BigfootState::Invulnerable => {
-//                     // Switch to the stomp phase
-//                     bigfoot.state = BigfootState::Solid;
-
-//                     // Make Bigfoot fully opaque and solid
-//                     sprite.color.set_alpha(1.0);
-
-//                     // Set the timer for the stomp phase
-//                     bigfoot.timer = Timer::from_seconds(5.0, TimerMode::Once);
-
-//                     // Check if the player is within the Bigfoot's stomp area
-//                     if let Ok((mut player, mut invulnerability_option)) = player_query.get_single_mut() {
-//                         let player_position = Vec3 { x: player.x, y: player.y, z: 0.0 };
-//                         let bigfoot_position = Vec3 { x: bigfoot.x, y: bigfoot.y, z: 0.0 };
-
-//                         // If the player is within the 250 radius, apply damage
-//                         let distance = player_position.distance(bigfoot_position);
-//                         if distance <= 250.0 {
-//                             if let Some(ref mut invulnerability) = invulnerability_option {
-//                                 player.take_damage(
-//                                     500, // Damage amount
-//                                     Some(invulnerability), // Pass the mutable reference
-//                                 );
-//                             } else {
-//                                 player.take_damage(
-//                                     500, // Damage amount
-//                                     None, // No invulnerability
-//                                 );
-//                             }
-//                         }
-//                     }
-//                 }
-//                 BigfootState::Solid => {
-//                     // Bigfoot has finished stomping, reset its state and move it to the player's position
-//                     if let Ok((player, _invulnerability_option)) = player_query.get_single_mut() {
-//                         // Move Bigfoot to the player's position
-//                         bigfoot.x = player.x;
-//                         bigfoot.y = player.y;
-
-//                         // Reset Bigfoot's state to Invulnerable and restart the timer
-//                         bigfoot.state = BigfootState::Invulnerable;
-//                         bigfoot.timer = Timer::from_seconds(2.5, TimerMode::Once);
-
-//                         // Make Bigfoot semi-transparent again
-//                         sprite.color.set_alpha(0.5);
-//                     }
-//                 }
-//                 BigfootState::Cleanup => todo!(),
-//             }
-//         } else if bigfoot.state == BigfootState::Invulnerable {
-//             // While Bigfoot is invulnerable, make it semi-transparent
-//             sprite.color.set_alpha(0.5);
-//         }
-//     }
 // }
 
 
@@ -338,7 +329,7 @@ pub fn update_bigfoot(
 
                         // If the player is within the 250 radius, apply damage
                         let distance = player_position.distance(bigfoot_position);
-                        if distance <= 250.0 {
+                        if distance <= 175.0 {
                             if let Some(ref mut invulnerability) = invulnerability_option {
                                 player.take_damage(
                                     500, // Damage amount

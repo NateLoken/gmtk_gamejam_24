@@ -151,6 +151,30 @@ pub struct Bigfoot {
     pub y: f32,
     pub state: BigfootState,
     pub timer: Timer,
+    pub health: i32,
+}
+
+impl Bigfoot {
+    pub fn new(x: f32, y: f32) -> Self {
+        Bigfoot {
+            timer: Timer::from_seconds(2.5, TimerMode::Once),
+            state: BigfootState::Invulnerable,
+            x,
+            y,
+            health: 5, // Initial health value
+        }
+    }
+
+    pub fn take_damage(&mut self, amount: i32) {
+        self.health -= amount;
+        if self.health < 0 {
+            self.health = 0;
+        }
+    }
+
+    pub fn is_dead(&self) -> bool {
+        self.health <= 0
+    }
 }
 
 #[derive(PartialEq)]

@@ -216,7 +216,7 @@ fn dash_attack(
         });
 
         commands.entity(player_entity).insert(Invulnerability {
-            timer: Timer::from_seconds(0.5, TimerMode::Once)
+            timer: Timer::from_seconds(1.0, TimerMode::Once)
         });
 
         transform.translation.x = mouse_position.x;
