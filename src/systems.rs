@@ -294,7 +294,8 @@ pub fn check_collisions(
                         }
                     }
     
-                    player.take_damage(100, invulnerability_option.as_deref_mut());
+                    player.take_damage(100, entity, &mut commands, invulnerability_option.as_deref_mut());
+            }
                 }
             }
         }
@@ -303,7 +304,6 @@ pub fn check_collisions(
                 
             }
         }
-    }
 
 
 
@@ -351,6 +351,7 @@ pub fn update_bigfoot(
     mut query: Query<(Entity, &mut Bigfoot, &mut Sprite, &mut Transform)>,
     mut player_query: Query<(&mut Player, Option<&mut Invulnerability>)>,
     time: Res<Time>,
+    mut commands: Commands
 ) {
     for (entity, mut bigfoot, mut sprite, mut transform) in query.iter_mut() {
         // Update Bigfoot's timer
@@ -378,12 +379,17 @@ pub fn update_bigfoot(
                             if let Some(ref mut invulnerability) = invulnerability_option {
                                 player.take_damage(
                                     500, // Damage amount
+                                    entity,
+                                    &mut commands,
                                     Some(invulnerability), // Pass the mutable reference
+
                                 );
                             } else {
                                 player.take_damage(
-                                    500, // Damage amount
-                                    None, // No invulnerability
+                                  500, // Damage amount
+                                    entity,
+                                    &mut commands,
+                                    None, 
                                 );
                             }
                         }

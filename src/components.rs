@@ -36,34 +36,34 @@ impl Player {
         }
     }
 
-        pub fn take_damage(
-            &mut self,
-            amount: i32,
-            invulnerability: Option<&mut Invulnerability>,
-        ) {
-             {if let Some(mut invuln) = invulnerability {
-                if invuln.is_active() {
-                    println!("Player is invulnerable, no damage taken.");
-                    return;
-                }
-                else {
-                    invuln.reset();
-                }
+    pub fn take_damage(
+        &mut self,
+        amount: i32,
+        entity: Entity,
+        commands: &mut Commands,
+        invulnerability_option: Option<&mut Invulnerability>,
+    ) {
+        if let Some(invulnerability) = invulnerability_option {
+            if invulnerability.is_active() {
+                //println!("Player is invulnerable, no damage taken.");
+                return;
+            } else {
+                invulnerability.reset(); // Reset the timer if it's not active
+                println!("Invulnerability reset.");
             }
-    
-            // Apply the damage
-            self.health -= amount;
-            println!("Player took {} damage, remaining health: {}", amount, self.health);
-    
-            // Check for game over condition
-            if self.health <= 0 {
-                println!("Player is dead! Game Over.");
-                // Handle game over logic here, such as triggering an event to exit the game
-                // For example, you can trigger the game exit here:
-                // commands.spawn().insert(GameOverEvent);
-                // Or if you want to exit immediately:
-                std::process::exit(0);
-            }
+        } else {
+            // If no invulnerability component, add it with the desired duration
+            commands.entity(entity).insert(Invulnerability::new(1.0));
+           // println!("Invulnerability added with duration: {} seconds.", invulnerability_duration);
+        }
+
+        // Apply damage to the player
+        self.health -= amount;
+        println!("Player took {} damage, remaining health: {}", amount, self.health);
+
+        if self.health <= 0 {
+            println!("Player has died. Exiting the game.");
+            //exit.send(AppExit::Success);
         }
     }
 }
