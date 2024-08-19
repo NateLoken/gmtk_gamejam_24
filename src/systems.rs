@@ -136,7 +136,7 @@ pub fn check_collisions(
                     if bigfoot.state != BigfootState::Invulnerable {
                         println!("Bigfoot hit!");
 
-                        bone_hit(&mut asset_server, &mut commands);
+                        bone_hit(&asset_server, &mut commands);
                         bigfoot.take_damage(1);
                         println!("{}", bigfoot.health);
                         if (bigfoot.health <= 0) {
@@ -178,7 +178,7 @@ pub fn check_collisions(
 
                         bigfoot.take_damage(1);
                         println!("{}", bigfoot.health);
-                        bone_hit(&mut asset_server, &mut commands);
+                        bone_hit(&asset_server, &mut commands);
                         if (bigfoot.health <= 0) {
                             println!("Bigfoot defeated by a point!");
                             commands.entity(*bigfoot_entity).despawn_recursive(); // Fully despawn Bigfoot
@@ -218,7 +218,7 @@ pub fn check_collisions(
                 if !bigfoot_query.get(enemy_entity).is_ok() {
                         // Call the kill_enemy function
                         enemy_killed(&mut score,&mut player, &mut cooldowns_query);
-                        play_hit_swing(&mut asset_server, &mut commands);
+                        play_hit_swing(&asset_server, &mut commands);
                     // Despawn the enemy
                 commands.entity(enemy_entity).despawn();
                 enemy_counter.0 -= 1;
@@ -255,7 +255,7 @@ pub fn check_collisions(
                 if !bigfoot_query.get(enemy_entity).is_ok() {
                         // Call the kill_enemy function
                     enemy_killed(&mut score,&mut player, &mut cooldowns_query);
-                    play_hit_swing(&mut asset_server, &mut commands);
+                    play_hit_swing(&asset_server, &mut commands);
                     // Despawn the enemy
                     commands.entity(enemy_entity).despawn();
                 }
@@ -761,7 +761,7 @@ pub fn play_empty_swing(
 }
 
 pub fn play_hit_swing(
-    asset_server: &mut Res<AssetServer>,
+    asset_server: & Res<AssetServer>,
     commands: &mut Commands
 ) {
     let sound1 = "sfx/hit1.ogg";
@@ -785,12 +785,45 @@ pub fn play_hit_swing(
 }
 
 pub fn bone_hit(
-    asset_server: &mut Res<AssetServer>,
+    asset_server: &Res<AssetServer>,
     commands: &mut Commands
 ) {
     // Create an entity dedicated to playing our background music
     &mut commands.spawn(AudioBundle {
         source: asset_server.load("./sfx/bone.ogg"),
+        settings: PlaybackSettings::ONCE,
+    });
+}
+
+pub fn dash_sound(
+    asset_server: &Res<AssetServer>,
+    commands: &mut Commands
+) {
+    // Create an entity dedicated to playing our background music
+    &mut commands.spawn(AudioBundle {
+        source: asset_server.load("./sfx/dash.ogg"),
+        settings: PlaybackSettings::ONCE,
+    });
+}
+
+pub fn aoe_sound(
+    asset_server: &Res<AssetServer>,
+    commands: &mut Commands
+) {
+    // Create an entity dedicated to playing our background music
+    &mut commands.spawn(AudioBundle {
+        source: asset_server.load("./sfx/aoe.ogg"),
+        settings: PlaybackSettings::ONCE,
+    });
+}
+
+pub fn ranged_sound(
+    asset_server: &mut Res<AssetServer>,
+    commands: &mut Commands
+) {
+    // Create an entity dedicated to playing our background music
+    &mut commands.spawn(AudioBundle {
+        source: asset_server.load("./sfx/ranged.ogg"),
         settings: PlaybackSettings::ONCE,
     });
 }

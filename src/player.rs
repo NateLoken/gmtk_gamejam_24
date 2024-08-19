@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-use crate::{play_empty_swing, spawn_bigfoot, GameTextures, MouseCoords, BASE_SPEED, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
+use crate::{aoe_sound, dash_sound, play_empty_swing, ranged_sound, spawn_bigfoot, GameTextures, MouseCoords, BASE_SPEED, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
 use crate::components::{Ability, CollisionBox, Cooldowns, GameState, Invulnerability, Lifetime, Line, Player, PointMarker, Points, Velocity}; 
 use bevy::prelude::*;
 
@@ -87,30 +87,33 @@ fn ability_system(
     player_query: Query<(Entity, &mut Transform), With<Player>>,
     game_textures: Res<GameTextures>,
     points: ResMut<Points>,
-    asset_server: Res<AssetServer>,
+    mut asset_server: Res<AssetServer>,
 ) {
     if let Ok(mut cooldowns) = cooldown_query.get_single_mut() {
         if kb.just_pressed(KeyCode::KeyE) {
             if cooldowns.is_ready(Ability::Ranged) {
                 ranged_attack(
-                    commands,
+                    &mut commands,
                     player_query,
                     mouse_coords,
                     game_textures);
                 cooldowns.reset(Ability::Ranged);
+                ranged_sound(&mut asset_server, &mut commands);
             } else {
                 println!("Ranged ability on cooldown!");
             }
         } else if kb.just_pressed(KeyCode::KeyF) {
             if cooldowns.is_ready(Ability::Dash) {
                 dash_attack(
-                    commands,
+                    &mut commands,
                     player_query,
                     mouse_coords,
                     game_textures);
                 cooldowns.reset(Ability::Dash);
+                dash_sound(&mut asset_server, &mut commands);
             } else {
                 println!("Dash is on cooldown!");
+                
             }
         } else if kb.just_pressed(KeyCode::KeyQ) {
             if cooldowns.is_ready(Ability::Attack) {
@@ -128,11 +131,12 @@ fn ability_system(
         } else if kb.just_pressed(KeyCode::KeyT) {
             if cooldowns.is_ready(Ability::Aoe) {
                 aoe_attack(
-                    commands, 
+                    &mut commands, 
                     player_query, 
                     game_textures, 
                     points);
                 cooldowns.reset(Ability::Aoe);
+                aoe_sound(&asset_server, &mut commands)
             } else {
                 println!("AOE is on cooldown!");
             }
@@ -141,7 +145,7 @@ fn ability_system(
 }
 
 fn ranged_attack(
-    mut commands: Commands,
+   commands: &mut Commands,
     query: Query<(Entity, &mut Transform), With<Player>>,
     mouse_coords: Res<MouseCoords>,
     game_textures: Res<GameTextures>,
@@ -186,7 +190,7 @@ fn ranged_attack(
 }
 
 fn dash_attack(
-    mut commands: Commands,
+    commands: &mut Commands,
     mut query: Query<(Entity, &mut Transform), With<Player>>,
     mouse_coords: Res<MouseCoords>,
     game_textures: Res<GameTextures>,
@@ -281,7 +285,7 @@ fn melee_attack(
 
 
 fn aoe_attack(
-    mut commands: Commands,
+    commands: &mut Commands,
     player_query: Query<(Entity, &mut Transform), With<Player>>,
     game_textures: Res<GameTextures>,
     mut points: ResMut<Points>
