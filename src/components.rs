@@ -195,6 +195,13 @@ pub struct Score {
     pub enemies_killed: u32,
 }
 
+#[derive(Resource)]
+pub struct GameTimer(pub f32);
+
+#[derive(Component)]
+pub struct GameTimerText;
+
+
 impl Score {
     pub fn new() -> Self {
         Score {
@@ -220,7 +227,8 @@ pub enum GameState {
     Running,
     Menu,
     Paused,
-    Reset
+    Reset,
+    GameOver
 }
 
 #[derive(Resource)]

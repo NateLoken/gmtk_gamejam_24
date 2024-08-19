@@ -9,7 +9,7 @@ use enemy::EnemyPlugin;
 use player::PlayerPlugin;
 use systems::*;
 use events::*;
-use components::{CurrentGameState, GameState, MapGrid, MousePosition, Points, Score};
+use components::{CurrentGameState, GameState, GameTimer, MapGrid, MousePosition, Points, Score};
 
 
 //Assets constants
@@ -61,6 +61,7 @@ fn main() {
         .insert_resource(Points::default())
         .insert_resource(CurrentGameState { state: GameState::Menu }) 
         .insert_resource(MapGrid::default()) 
+        .insert_resource(GameTimer(0.0))
         .init_state::<GameState>()
         //.add_systems(PreStartup, setup_menu)
         .add_systems(Startup, (setup, setup_menu))
@@ -75,6 +76,7 @@ fn main() {
                 menu_action_system,
                 quit_action_system,
                 despawn_menu,
+                update_timer.run_if(in_state(GameState::Running)),
                 display_score.run_if(in_state(GameState::Running)),
                 check_collisions.run_if(in_state(GameState::Running)),
                 camera_follow_player.run_if(in_state(GameState::Running)),

@@ -6,7 +6,7 @@ use bevy::transform::commands;
 use bevy::utils::HashSet;
 use bevy::window::PrimaryWindow;
 use bevy::ui::{AlignItems, JustifyContent, Val, UiRect, Style};
-use crate::components::{Ability, Bigfoot, BigfootState, CollisionBox, CooldownUi, Cooldowns, DirectionComponent, HealthText, Invulnerability, Lifetime, Line, Map, MapGrid, MenuUI, MousePosition, MovementSpeed, PauseMenu, Player, PointMarker, Points, QuitButton, Resettable, Score, ScoreText, StartButton, Tag};
+use crate::components::{Ability, Bigfoot, BigfootState, CollisionBox, CooldownUi, Cooldowns, DirectionComponent, GameTimer, GameTimerText, HealthText, Invulnerability, Lifetime, Line, Map, MapGrid, MenuUI, MousePosition, MovementSpeed, PauseMenu, Player, PointMarker, Points, QuitButton, Resettable, Score, ScoreText, StartButton, Tag};
 use crate::events::{CollisionEvent};
 use crate::player::player_spawn_system;
 use crate::{GameState, MAP_SPIRITE};
@@ -767,14 +767,17 @@ fn format_cooldown_text(name: &str, cooldown: Option<f32>) -> String {
 pub fn update_ui_text(
     player_query: Query<&Player>,
     score: Res<Score>,
-    mut text_query: Query<(&mut Text, Option<&HealthText>, Option<&ScoreText>)>,
+    timer: Res<GameTimer>,
+    mut text_query: Query<(&mut Text, Option<&HealthText>, Option<&ScoreText>, Option<&GameTimerText>)>,
 ) {
     if let Ok(player) = player_query.get_single() {
-        for (mut text, health_text, score_text) in text_query.iter_mut() {
+        for (mut text, health_text, score_text, timer_text) in text_query.iter_mut() {
             if health_text.is_some() {
                 text.sections[0].value = format!("Health: {}", player.health);
             } else if score_text.is_some() {
                 text.sections[0].value = format!("Score: {}", score.get_enemies_killed());
+            }else if timer_text.is_some() {
+                text.sections[0].value = format!("Time: {}", f32::trunc(timer.0 * 100.0)/ 100.)
             }
         }
     }
@@ -976,6 +979,19 @@ pub fn aoe_sound(
         settings: PlaybackSettings::ONCE,
     });
 }
+pub fn update_timer(
+    time: Res<Time>,
+    mut timer: ResMut<GameTimer>,
+    mut query: Query<&mut Text, With<GameTimerText>>,
+) {
+    // Accumulate time
+    timer.0 += time.delta_seconds();
+
+    // Update the text with the accumulated time
+    // for mut text in query.iter_mut() {
+    //     text.sections[0].value = format!("Time: {:.1}", timer.0);
+    // }
+}
 
 pub fn stomp_sound(
     asset_server: &Res<AssetServer>,
@@ -1053,6 +1069,21 @@ pub fn game_menus(    commands: &mut Commands,
             })
             .insert(Resettable)
             .insert(HealthText);
+
+
+            parent.spawn(TextBundle {
+                text: Text::from_section(
+                    "Time: 0.0",
+                    TextStyle {
+                        font: asset_server.load("FiraSans-Bold.ttf"),
+                        font_size: 40.0,
+                        color: Color::WHITE,
+                    },
+                ),
+                ..Default::default()
+            })
+            .insert(Resettable)
+            .insert(GameTimerText);
 
             // Score Text
             parent.spawn(TextBundle {
