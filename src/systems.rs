@@ -549,7 +549,12 @@ pub fn setup_menu(mut commands:  Commands, asset_server:  Res<AssetServer>) {
     });
 }
 
-pub fn setup_game_over_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn setup_game_over_screen(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    score: Res<Score>,
+    game_timer: Res<GameTimer>,
+) {
     // Root node
     commands.spawn(NodeBundle {
         style: Style {
@@ -557,14 +562,47 @@ pub fn setup_game_over_screen(mut commands: Commands, asset_server: Res<AssetSer
             height: Val::Percent(100.0),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
+            flex_direction: FlexDirection::Column,  // Stack elements vertically
             ..Default::default()
         },
         background_color: Color::srgba(0.15, 0.15, 0.15, 1.0).into(),
         ..Default::default()
-        
-    }).insert(GameOverUI)
+    })
+    .insert(GameOverUI)
     .with_children(|parent| {
-        // Play Again button
+        parent.spawn(TextBundle {
+            text: Text::from_section(
+                format!("Final Score: {}", score.get_enemies_killed()),
+                TextStyle {
+                    font: asset_server.load("FiraSans-Bold.ttf"),
+                    font_size: 40.0,
+                    color: Color::WHITE,
+                },
+            ),
+            ..Default::default()
+        });
+    
+        parent.spawn(TextBundle {
+            text: Text::from_section(
+                format!("Time Survived: {:.1} seconds", game_timer.0),
+                TextStyle {
+                    font: asset_server.load("FiraSans-Bold.ttf"),
+                    font_size: 40.0,
+                    color: Color::WHITE,
+                },
+            ),
+            ..Default::default()
+        });
+    
+        // Add a spacing node between the text and the buttons
+        parent.spawn(NodeBundle {
+            style: Style {
+                height: Val::Px(50.0), // Spacing
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+    
         parent.spawn(ButtonBundle {
             style: Style {
                 width: Val::Px(200.0), 
@@ -591,8 +629,6 @@ pub fn setup_game_over_screen(mut commands: Commands, asset_server: Res<AssetSer
                 ..Default::default()
             });
         });
-
-        // Quit button
         parent.spawn(ButtonBundle {
             style: Style {
                 width: Val::Px(200.0), 
@@ -602,7 +638,7 @@ pub fn setup_game_over_screen(mut commands: Commands, asset_server: Res<AssetSer
                 align_items: AlignItems::Center,
                 ..Default::default()
             },
-            background_color: Color::srgba(0.75, 0.25, 0.25, 1.0).into(),
+            background_color: Color::srgba(0.75, 0.25, 0.25, 0.5).into(),
             ..Default::default()
         })
         .insert(QuitButton)
@@ -619,8 +655,11 @@ pub fn setup_game_over_screen(mut commands: Commands, asset_server: Res<AssetSer
                 ..Default::default()
             });
         });
+    
+        // Other buttons and UI elements
     });
 }
+
 
 pub fn spawn_menu(
     mut commands:  Commands,
