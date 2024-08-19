@@ -319,12 +319,6 @@ pub fn check_collisions(
         }
     }
 
-
-
-
-
-
-
 pub fn spawn_bigfoot(
     mut commands: Commands,
     player_query: Query<&Transform, With<Player>>,
@@ -722,6 +716,7 @@ pub fn setup_pause_menu(mut commands: Commands, asset_server: Res<AssetServer>) 
     });
 }
 
+
 pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut state: ResMut<NextState<GameState>>) {
     commands.spawn(Camera2dBundle::default());
     state.set(GameState::Running);
@@ -881,6 +876,12 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut state: 
             },
     )).insert(Map)
     ;
+
+     // Create an entity dedicated to playing our background music
+     commands.spawn(AudioBundle {
+        source: asset_server.load("./beats/back.ogg"),
+        settings: PlaybackSettings::LOOP,
+    });
 
     commands.insert_resource(game_textures);
     commands.insert_resource(enemy_count);
