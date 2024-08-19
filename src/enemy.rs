@@ -3,12 +3,12 @@ use std::{f32::consts::PI, time::Duration};
 use bevy::{prelude::*, time::common_conditions::on_timer};
 use rand::Rng;
 
-use crate::{components::{CollisionBox, Enemy, GameState, Player, Velocity}, EnemyCount, GameTextures, BASE_SPEED, PLAYER_RADIUS, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
+use crate::{components::{CollisionBox, Enemy, GameState, Player, Resettable, Velocity}, EnemyCount, GameTextures, BASE_SPEED, PLAYER_RADIUS, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
 pub struct EnemyPlugin;
 
 impl Plugin for EnemyPlugin {
    fn build(&self, app: &mut App) {
-       app.add_systems(Update, enemy_spawn_system.run_if(on_timer(Duration::from_secs(1))).run_if(in_state(GameState::Paused)))
+       app.add_systems(Update, enemy_spawn_system.run_if(on_timer(Duration::from_secs(1))).run_if(in_state(GameState::Running)))
            .add_systems(FixedUpdate, (player_tracking_system, enemy_movement_system).run_if(in_state(GameState::Running)));
    } 
 }
@@ -41,8 +41,8 @@ fn enemy_spawn_system(
         ))
             .insert(CollisionBox::new(SPRITE_SIZE.0 * SPRITE_SCALE/8.0, SPRITE_SIZE.1 * SPRITE_SCALE/8.0))
             .insert(Enemy)
-            .insert(Velocity {x: 0., y: 0.});
-
+            .insert(Velocity {x: 0., y: 0.})
+            .insert(Resettable);
         enemy_count.0 += 1;
     }
 }

@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use crate::{aoe_sound, dash_sound, play_empty_swing, ranged_sound, spawn_bigfoot, GameTextures, MouseCoords, BASE_SPEED, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
-use crate::components::{Ability, CollisionBox, Cooldowns, GameState, Invulnerability, Lifetime, Line, Player, PointMarker, Points, Velocity}; 
+use crate::components::{Ability, CollisionBox, Cooldowns, GameState, Invulnerability, Lifetime, Line, Player, PointMarker, Points, Resettable, Velocity}; 
 use bevy::prelude::*;
 
 pub struct PlayerPlugin;
@@ -16,7 +16,7 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-fn player_spawn_system(
+pub fn player_spawn_system(
     mut commands: Commands,
     game_textures: Res<GameTextures>,
 ) {
@@ -34,6 +34,7 @@ fn player_spawn_system(
         .insert(CollisionBox::new(SPRITE_SIZE.0 * SPRITE_SCALE, SPRITE_SIZE.1 * SPRITE_SCALE))
         .insert(Player { health: 500, x:0.0, y:0.0,})
         .insert(Velocity { x: 0., y: 0. })
+        .insert(Resettable)
         .insert(Cooldowns::new());  // Initialize cooldowns for abilities)
 }
 

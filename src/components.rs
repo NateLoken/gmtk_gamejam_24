@@ -187,6 +187,9 @@ pub enum BigfootState {
     Cleanup,
 }
 
+#[derive(Component)]
+pub struct Resettable;
+
 #[derive(Resource)]
 pub struct Score {
     pub enemies_killed: u32,
@@ -197,6 +200,10 @@ impl Score {
         Score {
             enemies_killed: 0,
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.enemies_killed = 0;
     }
 
     pub fn increment(&mut self) {
@@ -213,6 +220,7 @@ pub enum GameState {
     Running,
     Menu,
     Paused,
+    Reset
 }
 
 #[derive(Resource)]

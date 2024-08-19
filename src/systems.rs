@@ -6,8 +6,9 @@ use bevy::transform::commands;
 use bevy::utils::HashSet;
 use bevy::window::PrimaryWindow;
 use bevy::ui::{AlignItems, JustifyContent, Val, UiRect, Style};
-use crate::components::{Ability, Bigfoot, BigfootState, CollisionBox, CooldownUi, Cooldowns, DirectionComponent, HealthText, Invulnerability, Lifetime, Line, Map, MapGrid, MenuUI, MousePosition, MovementSpeed, PauseMenu, Player, PointMarker, Points, QuitButton, Score, ScoreText, StartButton, Tag};
+use crate::components::{Ability, Bigfoot, BigfootState, CollisionBox, CooldownUi, Cooldowns, DirectionComponent, HealthText, Invulnerability, Lifetime, Line, Map, MapGrid, MenuUI, MousePosition, MovementSpeed, PauseMenu, Player, PointMarker, Points, QuitButton, Resettable, Score, ScoreText, StartButton, Tag};
 use crate::events::{CollisionEvent};
+use crate::player::player_spawn_system;
 use crate::{GameState, MAP_SPIRITE};
 use rand::Rng;
 use std::f32::consts::PI;
@@ -352,7 +353,7 @@ pub fn spawn_bigfoot(
                 groundTexture: asset_server.load("foot_ground.png")
             },
             CollisionBox::new(256.0, 256.0), // Add collision box
-        ));
+        )).insert(Resettable);
     }
 }
 
@@ -545,10 +546,10 @@ pub fn setup_menu(mut commands:  Commands, asset_server:  Res<AssetServer>) {
 }
 
 pub fn spawn_menu(
-    mut commands: Commands,
+    mut commands:  Commands,
     query: Query<Entity, With<MenuUI>>,
     state: ResMut<State<GameState>>,
-    mut asset_server:  Res<AssetServer>,
+    mut asset_server:   Res<AssetServer>,
 ) {
     if *state.get() == GameState::Running || *state.get() == GameState::Paused{
         game_menus(&mut commands,  &mut asset_server);
@@ -630,7 +631,7 @@ pub fn handle_escape_pressed(
         }
     }else if keyboard_input.just_pressed(KeyCode::KeyB) {
         if *curr_state.get() == GameState::Paused {
-            state.set(GameState::Menu);
+            state.set(GameState::Reset);
         }
     }  
     }
@@ -1050,6 +1051,7 @@ pub fn game_menus(    commands: &mut Commands,
                 ),
                 ..Default::default()
             })
+            .insert(Resettable)
             .insert(HealthText);
 
             // Score Text
@@ -1068,6 +1070,7 @@ pub fn game_menus(    commands: &mut Commands,
                 },
                 ..Default::default()
             })
+            .insert(Resettable)
             .insert(ScoreText);
         });
 
@@ -1124,7 +1127,8 @@ pub fn game_menus(    commands: &mut Commands,
                         ),
                         ..Default::default()
                     })
-                    .insert(CooldownUi);
+                    .insert(CooldownUi)
+                .insert(Resettable);
                 });
             }
         });
@@ -1167,7 +1171,8 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut state: 
             },
             ..Default::default()
         },
-)).insert(Map);
+)).insert(Map)
+.insert(Resettable);
 
     commands.insert_resource(game_textures);
     commands.insert_resource(enemy_count);
@@ -1176,9 +1181,22 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut state: 
     commands.insert_resource(Points::default());
 }
 
-pub fn cleanup_game(mut commands: Commands, asset_server: Res<AssetServer>, mut state: ResMut<NextState<GameState>>, query: Query<Entity, (Without<Window>, Without<Camera2d>)>) {
+pub fn cleanup_game(mut commands:   Commands, 
+    mut asset_server:   Res<AssetServer>, 
+    player_query: Query<&Transform, With<Player>>, 
+    mut score: ResMut<Score>, 
+    mut points: ResMut<Points>, 
+    mut state: ResMut<NextState<GameState>>,
+    mut game_textures: Res<GameTextures>, 
+    query: Query<Entity, (With<Resettable>)>) {
     for entity in query.iter() {
         commands.entity(entity).despawn();
     }
-    setup(commands, asset_server, state);
+    score.reset();
+    *points = Points::default();
+    
+    //game_menus( &mut commands, &mut asset_server);
+    spawn_bigfoot(commands, player_query, asset_server);
+    // player_spawn_system(commands, game_textures);
+    
 }

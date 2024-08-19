@@ -65,7 +65,7 @@ fn main() {
         //.add_systems(PreStartup, setup_menu)
         .add_systems(Startup, (setup, setup_menu))
         .add_systems(OnExit(GameState::Menu), (spawn_menu, setup_pause_menu))
-        .add_systems(OnEnter(GameState::Menu),(cleanup_game, setup_menu))
+        .add_systems(OnEnter(GameState::Reset),(cleanup_game, setup_menu))
         //.add_plugin(QuickMenuPlugin::<PauseMenu>::new()) // Add the QuickMenu plugin
         .add_systems(
             FixedUpdate,
