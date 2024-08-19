@@ -3,7 +3,7 @@ use std::{f32::consts::PI, time::Duration};
 use bevy::{prelude::*, time::common_conditions::on_timer};
 use rand::Rng;
 
-use crate::{components::{Boss, Collider, CollisionBox, Enemy, Invulnerability, Player, Velocity}, EnemyCount, GameTextures, ENEMY_SPEED, MAX_ENEMIES, PLAYER_RADIUS, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
+use crate::{components::{Boss, Collider, Enemy, Health, Invulnerability, Player, Velocity}, EnemyCount, GameTextures, ENEMY_SPEED, MAX_ENEMIES, PLAYER_RADIUS, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
 pub struct EnemyPlugin;
 
 impl Plugin for EnemyPlugin {
@@ -20,7 +20,6 @@ fn enemy_spawn_system(
     mut enemy_count: ResMut<EnemyCount>,
     player_query: Query<&Transform, With<Player>>
 ) {
-    println!("Enemy Spawning!");
     if enemy_count.0 < MAX_ENEMIES {
         if let Ok(player_transform) = player_query.get_single() {
             let player_position = player_transform.translation;
@@ -41,12 +40,16 @@ fn enemy_spawn_system(
                         },
                         ..Default::default()
                     },
-            ))
-                .insert(Collider)
-                .insert(CollisionBox{ width: SPRITE_SIZE.0 * SPRITE_SCALE, height: SPRITE_SIZE.1 * SPRITE_SCALE })
-                .insert(Enemy)
-                .insert(Velocity {x: 0., y: 0.});
-
+                    Health {
+                        hp: 1,
+                    },
+                    Collider::new(Vec2::splat(SPRITE_SIZE.0 * SPRITE_SCALE)),
+                    Enemy,
+                    Velocity {
+                        x: 0.,
+                        y: 0.,
+                    },
+            ));
             enemy_count.0 += 1;
         }
     }
@@ -67,7 +70,7 @@ fn spawn_boss(
         let x = player_position.x  * angle.cos();
         let y = player_position.y  * angle.sin();
 
-        commands.spawn(
+        commands.spawn((
             SpriteBundle {
                 texture: game_textures.boss.clone(),
                 transform: Transform {
@@ -76,12 +79,11 @@ fn spawn_boss(
                     ..Default::default()
                 },
                 ..Default::default()
-            })
-            .insert(Collider)
-            .insert(Enemy)
-            .insert(Boss);
-
-        println!("Big Boss spawned here: {}{}", x, y);
+            },
+            Collider::new(Vec2::splat(SPRITE_SIZE.0 * SPRITE_SCALE)),
+            Enemy,
+            Boss,
+            ));
     }
 }
 

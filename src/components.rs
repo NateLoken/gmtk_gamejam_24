@@ -1,31 +1,48 @@
-use bevy::prelude::{Component, Timer, TimerMode, Vec2, Resource};
+use bevy::{ecs::entity::Entity, prelude::{Component, Resource, Timer, TimerMode, Vec2}};
 use std::collections::HashMap;
 
 // Common Components
+#[derive(Component)]
+pub struct Collider{
+    pub size: Vec2,
+    pub collisions: Vec<Entity>,
+}
+
+impl Collider {
+    pub fn new(size: Vec2) -> Self {
+        Self {
+            size,
+            collisions: vec![],
+        }
+    }
+    
+}
+
+#[derive(Component)]
+pub struct Health {
+    pub hp: i32
+}
+
+impl Health {
+    pub fn take_damage(&mut self, amount: i32) {
+        self.hp -= amount;
+        println!("Damage Taken: {}", amount);
+    }
+}
+
 #[derive(Component)]
 pub struct Velocity {
     pub x: f32,
     pub y: f32,
 }
 
-#[derive(Component)]
-pub struct Collider;
 
 // Player Components
 #[derive(Component)]
 pub struct Line;
 
 #[derive(Component)]
-pub struct Player {
-    pub health: i32,
-}
-
-impl Player {
-    pub fn take_damage(&mut self, amount: i32) {
-        self.health -= amount;
-        println!("Player took {} damage, remaining health: {}", amount, self.health);
-    }
-}
+pub struct Player;
 
 #[derive(Component)]
 pub struct PointMarker;
@@ -38,6 +55,7 @@ pub struct Lifetime {
 // Enemy components
 #[derive(Component)]
 pub struct Enemy;
+
 
 #[derive(Component)]
 pub struct Boss;
@@ -91,10 +109,3 @@ pub struct Invulnerability {
     pub timer: Timer,
 }
 
-
-
-#[derive(Component)]
-pub struct CollisionBox {
-    pub width: f32,
-    pub height: f32,
-}

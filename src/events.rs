@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 
 #[derive(Event)]
-pub struct CollisionEvent(pub Entity); // Event carrying the entity to delete
+pub enum CollisionEvent{
+    Collision,
+    Damage,
+} // Event carrying the entity to delete
 
 #[derive(Resource)]
 pub struct Score {

@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use crate::{GameTextures, MouseCoords, BASE_SPEED, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
-use crate::components::{Ability, Collider, CollisionBox, Cooldowns, Invulnerability, Lifetime, Line, Player, PointMarker, Points, Velocity}; 
+use crate::components::{Ability, Collider, Cooldowns, Health, Invulnerability, Lifetime, Line, Player, PointMarker, Points, Velocity}; 
 use bevy::prelude::*;
 
 pub struct PlayerPlugin;
@@ -30,12 +30,17 @@ fn player_spawn_system(
                 },
                 ..Default::default()
             },
-    ))
-        .insert(Collider)
-        .insert(CollisionBox{ width: SPRITE_SIZE.0 * SPRITE_SCALE, height: SPRITE_SIZE.1 * SPRITE_SCALE })
-        .insert(Player { health: 500 })
-        .insert(Velocity { x: 0., y: 0. })
-        .insert(Cooldowns::new());  // Initialize cooldowns for abilities)
+            Health {
+                hp: 500
+            },
+            Collider::new(Vec2::splat(SPRITE_SIZE.0 * SPRITE_SCALE)),
+            Cooldowns::new(),
+            Player,
+            Velocity {
+                x: 0.,
+                y: 0.,
+            },
+        ));
 }
 
 fn player_keyboard_event_system(
@@ -157,7 +162,7 @@ fn ranged_attack(
 
         let angle = direction.y.atan2(direction.x);
 
-        commands.spawn(
+        commands.spawn((
             SpriteBundle {
                 texture: game_textures.line.clone(),
                 transform: Transform {
@@ -167,14 +172,13 @@ fn ranged_attack(
                     ..Default::default()
                 },
                 ..Default::default()
-            }
-        )
-            .insert(Line)
-            .insert(Collider)
-            .insert(CollisionBox{ width: length, height: SPRITE_SIZE.0 })
-            .insert(Lifetime {
-                timer: Timer::from_seconds(0.1, TimerMode::Once)
-            });
+            },
+            Collider::new(Vec2::new(length, SPRITE_SIZE.0)),
+            Line,
+            Lifetime {
+                timer: Timer::from_seconds(0.1, TimerMode::Once),
+            },
+        ));
     }
 }
 
@@ -194,23 +198,23 @@ fn dash_attack(
 
         let angle = direction.y.atan2(direction.x);
 
-        commands.spawn(SpriteBundle {
-            texture: game_textures.line.clone(),
-            transform: Transform {
-                translation: Vec3::new(midpoint.x, midpoint.y, 0.),
-                rotation: Quat::from_rotation_z(angle),
-                scale: Vec3::new(length, SPRITE_SCALE, 0.),
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .insert(Line)
-        .insert(Collider)
-        .insert(CollisionBox{ width: length, height: SPRITE_SIZE.0 })
-        .insert(Lifetime {
-            timer: Timer::from_seconds(0.1, TimerMode::Once)
-        });
-
+        commands.spawn((
+                SpriteBundle {
+                    texture: game_textures.line.clone(),
+                    transform: Transform {
+                        translation: Vec3::new(midpoint.x, midpoint.y, 0.),
+                        rotation: Quat::from_rotation_z(angle),
+                        scale: Vec3::new(length, SPRITE_SCALE, 0.),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                Collider::new(Vec2::new(length, SPRITE_SIZE.0)),
+                Line,
+                Lifetime {
+                    timer: Timer::from_seconds(0.1, TimerMode::Once),
+                },
+        ));
         commands.entity(player_entity).insert(Invulnerability {
             timer: Timer::from_seconds(0.5, TimerMode::Once)
         });
@@ -253,20 +257,22 @@ fn melee_attack(
 
                 points.0.push(arc_point);
 
-                commands.spawn(
-                    SpriteBundle {
-                        texture: game_textures.line.clone(),
-                        transform: Transform {
-                            translation: Vec3::new(arc_point.x, arc_point.y, 0.),
-                            scale: Vec3::new(5., 5., 0.),
+                commands.spawn((
+                        SpriteBundle {
+                            texture: game_textures.line.clone(),
+                            transform: Transform {
+                                translation: Vec3::new(arc_point.x, arc_point.y, 0.),
+                                scale: Vec3::new(5., 5., 0.),
+                                ..Default::default()
+                            },
                             ..Default::default()
                         },
-                        ..Default::default()
-                    })
-                    .insert(PointMarker)
-                    .insert(Lifetime {
-                        timer: Timer::from_seconds(0.1, TimerMode::Once),
-                    });
+                        Collider::new(Vec2::new(5., 5.)),
+                        PointMarker,
+                        Lifetime {
+                            timer: Timer::from_seconds(0.1, TimerMode::Once),
+                        },
+                ));
             }
         }
     }
@@ -296,24 +302,26 @@ fn aoe_attack(
                 let circle_point = Vec2::new(
                     player_position.x + radius as f32 * angle.cos(), 
                     player_position.y + radius as f32 * angle.sin(),
-                    );
+                );
 
                 points.0.push(circle_point);
 
-                commands.spawn(
-                    SpriteBundle {
-                        texture: game_textures.line.clone(),
-                        transform: Transform {
-                            translation: Vec3::new(circle_point.x, circle_point.y, 0.),
-                            scale: Vec3::new(5., 5., 0.),
+                commands.spawn((
+                        SpriteBundle {
+                            texture: game_textures.line.clone(),
+                            transform: Transform {
+                                translation: Vec3::new(circle_point.x, circle_point.y, 0.),
+                                scale: Vec3::new(5., 5., 0.),
+                                ..Default::default()
+                            },
                             ..Default::default()
                         },
-                        ..Default::default()
-                    })
-                    .insert(PointMarker)
-                    .insert(Lifetime {
-                        timer: Timer::from_seconds(0.1, TimerMode::Once),
-                    });
+                        Collider::new(Vec2::new(5., 5.)),
+                        PointMarker,
+                        Lifetime {
+                            timer: Timer::from_seconds(0.1, TimerMode::Once),
+                        },
+                ));
             }
         }
     }

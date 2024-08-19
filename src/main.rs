@@ -1,10 +1,12 @@
 mod components;
+mod collision;
 mod enemy;
 mod player;
 mod systems;
 mod events;
 
 use bevy::prelude::*;
+use collision::CollisionPlugin;
 use enemy::EnemyPlugin;
 use player::PlayerPlugin;
 use systems::*;
@@ -24,7 +26,7 @@ const BASE_SPEED: f32 = 250.;
 const PLAYER_RADIUS: f32 = 500.;
 
 // Enemy Constants
-const MAX_ENEMIES: u32 = 10;
+const MAX_ENEMIES: u32 = 1;
 const ENEMY_SPEED: f32 = 150.;
 
 // Resources
@@ -51,14 +53,15 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugins(PlayerPlugin)
         .add_plugins(EnemyPlugin)
+        .add_plugins(CollisionPlugin)
         .add_systems(Startup, setup)
         .add_systems(
             FixedUpdate,
             (
                 camera_follow_player,
                 display_score,
-                check_collisions,
                 camera_follow_player,
+                clean_dead,
                 update_mouse_position,
                 update_lifetime,
                 update_cooldowns, // Manage ability cooldowns

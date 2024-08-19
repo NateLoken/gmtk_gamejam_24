@@ -1,6 +1,6 @@
 use bevy::prelude::*;
-use crate::components::{Collider, CollisionBox, Cooldowns, Invulnerability, Lifetime, Line, Player, PointMarker, Points};
-use crate::events::{CollisionEvent, Score};
+use crate::components::{Cooldowns, Health, Invulnerability, Lifetime, Player, Points};
+use crate::events::Score;
 
 use crate::{EnemyCount, GameTextures, MouseCoords, BOSS_SPRITE, ENEMY_SPRITE, LINE_SPRITE, PLAYER_SPRITE};
 // Systems Implementation
@@ -54,127 +54,19 @@ pub fn camera_follow_player(
     }
 }
 
-
-pub fn enemy_killed(score: &mut ResMut<Score>) {
-    score.increment();
-    println!("Score: {}", score.get_enemies_killed());
+pub fn clean_dead(
+    mut commands: Commands,
+    query: Query<(Entity, &Health)>,
+) {
+   for (entity_id, entity_health) in query.iter() {
+       if entity_health.hp <=0 {
+           commands.entity(entity_id).despawn();
+       }
+   }
 }
 
 pub fn display_score(_score: Res<Score>) {
     //println!("Enemies killed: {}", score.get_enemies_killed());
-}
-
-//pub fn check_collisions(
-//    mut query: Query<(&Collider, &Transform, &Sprite)>,
-//) {
-//    let mut colliders = query.iter_combinations_mut();
-//    while let Some([(_,  transform1, sprite1), (_, transform2, sprite2)]) = colliders.fetch_next() {
-//        if let Some(_) = aabb_collision(transform1.translation, sprite1, transform2.translation, sprite2) {
-//            println!("Collision detected between {:?} and {:?}", transform1.translation, transform2.translation);
-//        }
-//    }
-//}
-//
-//fn aabb_collision(pos1: Vec3, sprite1: &Sprite, pos2: Vec3, sprite2: &Sprite) -> Option<()> {
-//    let half_size1 = sprite1.custom_size.unwrap_or(Vec2::new(1.0, 1.0)) / 2.0;
-//    let half_size2 = sprite2.custom_size.unwrap_or(Vec2::new(1.0, 1.0)) / 2.0;
-//
-//    if pos1.x - half_size1.x < pos2.x + half_size2.x
-//        && pos1.x + half_size1.x > pos2.x - half_size2.x
-//        && pos1.y - half_size1.y < pos2.y + half_size2.y
-//        && pos1.y + half_size1.y > pos2.y - half_size2.y
-//    {
-//        Some(())
-//    } else {
-//        None
-//    }
-//}
-
-pub fn check_collisions(
-    mut player_query: Query<(&mut Player, &CollisionBox, &Transform), Without<Invulnerability>>,
-    other_entities_query: Query<(Entity, &Transform, &CollisionBox), Without<Player>>,
-    points_query: Query<(Entity, &Transform), With<PointMarker>>,
-    mut score: ResMut<Score>,
-    mut enemy_count: ResMut<EnemyCount>,
-    mut commands: Commands,
-    line_query: Query<(Entity, &Transform, &CollisionBox), With<Line>>,
-) {
-    for (enemy_entity, transform, bounding_box) in other_entities_query.iter() {
-        let enemy_min_x = transform.translation.x - bounding_box.width / 2.0;
-        let enemy_max_x = transform.translation.x + bounding_box.width / 2.0;
-        let enemy_min_y = transform.translation.y - bounding_box.height / 2.0;
-        let enemy_max_y = transform.translation.y + bounding_box.height / 2.0;
-
-        for (point_entity, point_transform) in points_query.iter() {
-            let point = Vec2::new(point_transform.translation.x, point_transform.translation.y);
-
-            if point.x > enemy_min_x
-                && point.x < enemy_max_x
-                && point.y > enemy_min_y
-                && point.y < enemy_max_y
-            {
-                // Call the kill_enemy function
-                score.increment();
-
-                // Despawn the enemy
-                commands.entity(enemy_entity).despawn();
-                enemy_count.0 -= 1;
-                break;
-            }
-        }
-    }
-    for (enemy_entity, enemy_box, enemy_transform) in other_entities_query.iter() {
-        let enemy_min_x = enemy_box.translation.x - enemy_transform.width / 2.0;
-        let enemy_max_x = enemy_box.translation.x + enemy_transform.width / 2.0;
-        let enemy_min_y = enemy_box.translation.y - enemy_transform.height / 2.0;
-        let enemy_max_y = enemy_box.translation.y + enemy_transform.height / 2.0;
-
-        for (line_entity, line_box, line_transform) in line_query.iter() {
-            let line_min_x = line_box.translation.x - line_transform.width / 2.0;
-            let line_max_x = line_box.translation.x + line_transform.width / 2.0;
-            let line_min_y = line_box.translation.y - line_transform.height / 2.0;
-            let line_max_y = line_box.translation.y + line_transform.height / 2.0;
-
-            // Check for collision
-            if line_max_x > enemy_min_x
-                && line_min_x < enemy_max_x
-                && line_max_y > enemy_min_y
-                && line_min_y < enemy_max_y
-            {
-                // Call the kill_enemy function
-                score.increment();
-
-                // Despawn the enemy
-                commands.entity(enemy_entity).despawn();
-
-                // Despawn the line after it collides with an enemy
-                //commands.entity(line_entity).despawn();
-                break;
-            }
-        }
-    }
-    for (mut player, player_box, player_transform) in player_query.iter_mut() {
-        for (enemy_entity, enemy_transform, enemy_box) in other_entities_query.iter() {
-            let enemy_min_x = enemy_transform.translation.x - enemy_box.width / 2.0;
-            let enemy_max_x = enemy_transform.translation.x + enemy_box.width / 2.0;
-            let enemy_min_y = enemy_transform.translation.y - enemy_box.height / 2.0;
-            let enemy_max_y = enemy_transform.translation.y + enemy_box.height / 2.0;
-
-            let player_min_x = player_transform.translation.x - player_box.width / 2.0;
-            let player_max_x = player_transform.translation.x + player_box.width / 2.0;
-            let player_min_y = player_transform.translation.y - player_box.height / 2.0;
-            let player_max_y = player_transform.translation.y + player_box.height / 2.0;
-
-            if player_max_x > enemy_min_x
-                && player_min_x < enemy_max_x
-                && player_max_y > enemy_min_y
-                && player_min_y < enemy_max_y
-            {
-                // Handle collision, but only if player is not invulnerable
-                player.take_damage(10);
-            }
-        }
-    }
 }
 
 // System to update the MousePosition resource whenever the mouse moves
