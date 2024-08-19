@@ -32,7 +32,7 @@ fn player_spawn_system(
             },
     ))
         .insert(CollisionBox::new(SPRITE_SIZE.0 * SPRITE_SCALE, SPRITE_SIZE.1 * SPRITE_SCALE))
-        .insert(Player { health: 500, x:0.0, y:0.0 })
+        .insert(Player { health: 500, x:0.0, y:0.0,})
         .insert(Velocity { x: 0., y: 0. })
         .insert(Cooldowns::new());  // Initialize cooldowns for abilities)
 }

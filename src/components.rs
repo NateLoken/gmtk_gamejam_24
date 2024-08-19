@@ -36,7 +36,7 @@ impl Player {
         }
     }
 
-    pub fn take_damage(
+        pub fn take_damage(
         &mut self,
         amount: i32,
         entity: Entity,
@@ -47,10 +47,7 @@ impl Player {
             if invulnerability.is_active() {
                 //println!("Player is invulnerable, no damage taken.");
                 return;
-            } else {
-                invulnerability.reset(); // Reset the timer if it's not active
-                println!("Invulnerability reset.");
-            }
+            } 
         } else {
             // If no invulnerability component, add it with the desired duration
             commands.entity(entity).insert(Invulnerability::new(1.0));
@@ -65,9 +62,10 @@ impl Player {
             println!("Player has died. Exiting the game.");
             //exit.send(AppExit::Success);
         }
+        commands.entity(entity).insert(Invulnerability::new(1.0));
     }
-}
-
+    }
+   
 #[derive(Component)]
 pub struct PointMarker;
 

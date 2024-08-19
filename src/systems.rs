@@ -207,11 +207,16 @@ pub fn check_collisions(
                 && point.y > enemy_min_y
                 && point.y < enemy_max_y
             {
-                // Call the kill_enemy function
-                enemy_killed(&mut score,&mut player, &mut cooldowns_query);
-                
 
-                // Despawn the enemy
+                if bigfoot_entities.contains(&enemy_entity) || hit_entities.contains(&enemy_entity) {
+                    continue; // Skip Bigfoot and already hit entities
+                }
+
+                if !bigfoot_query.get(enemy_entity).is_ok() {
+                        // Call the kill_enemy function
+                        enemy_killed(&mut score,&mut player, &mut cooldowns_query);
+
+                    // Despawn the enemy
                 commands.entity(enemy_entity).despawn();
                 enemy_counter.0 -= 1;
                 break;
@@ -239,11 +244,19 @@ pub fn check_collisions(
                 && attack_max_y > enemy_min_y
                 && attack_min_y < enemy_max_y
             {
-                // Call the kill_enemy function
-                enemy_killed(&mut score,&mut player, &mut cooldowns_query);
 
-                // Despawn the enemy
-                commands.entity(enemy_entity).despawn();
+                if bigfoot_entities.contains(&enemy_entity) || hit_entities.contains(&enemy_entity) {
+                    continue; // Skip Bigfoot and already hit entities
+                }
+
+                if !bigfoot_query.get(enemy_entity).is_ok() {
+                        // Call the kill_enemy function
+                    enemy_killed(&mut score,&mut player, &mut cooldowns_query);
+
+                    // Despawn the enemy
+                    commands.entity(enemy_entity).despawn();
+                }
+                
 
                 // Despawn the line after it collides with an enemy
                 //commands.entity(line_entity).despawn();
@@ -304,7 +317,7 @@ pub fn check_collisions(
                 
             }
         }
-
+    }
 
 
 
