@@ -49,20 +49,31 @@ struct EnemyCount(u32);
 
 fn main() {
     App::new()
+        // .insert_resource(WindowDescriptor {
+        //     title: "Game".to_string(),
+        //     ..Default::default()
+        // })
         .add_plugins(DefaultPlugins)
         .add_plugins(PlayerPlugin)
         .add_plugins(EnemyPlugin)
         .insert_resource(Score::new())
         .insert_resource(MousePosition::default())
         .insert_resource(Points::default())
-        .insert_resource(CurrentGameState { state: GameState::Running }) 
+        .insert_resource(CurrentGameState { state: GameState::Menu }) 
         .insert_resource(MapGrid::default()) 
         .init_state::<GameState>()
+        .add_systems(PreStartup, setup_menu)
         .add_systems(Startup, (setup, setup_pause_menu))
+        .add_systems(OnExit(GameState::Menu), spawn_menu)
         //.add_plugin(QuickMenuPlugin::<PauseMenu>::new()) // Add the QuickMenu plugin
         .add_systems(
             FixedUpdate,
             (
+                //menu_action_system.run_if(in_state(GameState::Menu)),
+                //quit_action_system .run_if(in_state(GameState::Menu)),
+                menu_action_system,
+                quit_action_system,
+                despawn_menu,
                 display_score.run_if(in_state(GameState::Running)),
                 check_collisions.run_if(in_state(GameState::Running)),
                 camera_follow_player.run_if(in_state(GameState::Running)),

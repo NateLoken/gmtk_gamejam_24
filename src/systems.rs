@@ -6,7 +6,7 @@ use bevy::transform::commands;
 use bevy::utils::HashSet;
 use bevy::window::PrimaryWindow;
 use bevy::ui::{AlignItems, JustifyContent, Val, UiRect, Style};
-use crate::components::{Ability, Bigfoot, BigfootState, CollisionBox, CooldownUi, Cooldowns, DirectionComponent, HealthText, Invulnerability, Lifetime, Line, Map, MapGrid, MousePosition, MovementSpeed, PauseMenu, Player, PointMarker, Points, Score, ScoreText, Tag};
+use crate::components::{Ability, Bigfoot, BigfootState, CollisionBox, CooldownUi, Cooldowns, DirectionComponent, HealthText, Invulnerability, Lifetime, Line, Map, MapGrid, MenuUI, MousePosition, MovementSpeed, PauseMenu, Player, PointMarker, Points, QuitButton, Score, ScoreText, StartButton, Tag};
 use crate::events::{CollisionEvent};
 use crate::{GameState, MAP_SPIRITE};
 use rand::Rng;
@@ -471,6 +471,147 @@ pub fn update_bigfoot_position(
     }
 }
 
+pub fn setup_menu(mut commands: Commands, asset_server: Res<AssetServer>, materials: ResMut<Assets<ColorMaterial>>) {
+    // Root node
+    commands.spawn(NodeBundle {
+        style: Style {
+            width: Val::Percent(100.0), 
+            height: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            ..Default::default()
+        },
+        background_color: Color::srgba(0.15, 0.15, 0.15, 1.0).into(),
+        ..Default::default()
+        
+    }).insert(MenuUI)
+    .with_children(|parent| {
+        // Start button
+        parent.spawn(ButtonBundle {
+            style: Style {
+                width: Val::Px(200.0), 
+                height: Val::Px(65.0),
+                margin: UiRect::all(Val::Px(10.0)),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..Default::default()
+            },
+            background_color: Color::srgba(0.25, 0.25, 0.75, 1.0).into(),
+            ..Default::default()
+        })
+        .insert(StartButton)
+        .with_children(|parent| {
+            parent.spawn(TextBundle {
+                text: Text::from_section(
+                    "Start",
+                    TextStyle {
+                        font: asset_server.load("FiraSans-Bold.ttf"),
+                        font_size: 40.0,
+                        color: Color::WHITE,
+                    },
+                ),
+                ..Default::default()
+            });
+        });
+
+        // Quit button
+        parent.spawn(ButtonBundle {
+            style: Style {
+                width: Val::Px(200.0), 
+                height: Val::Px(65.0),
+                margin: UiRect::all(Val::Px(10.0)),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..Default::default()
+            },
+            background_color: Color::srgba(0.75, 0.25, 0.25, 1.0).into(),
+            ..Default::default()
+        })
+        .insert(QuitButton)
+        .with_children(|parent| {
+            parent.spawn(TextBundle {
+                text: Text::from_section(
+                    "Quit",
+                    TextStyle {
+                        font: asset_server.load("FiraSans-Bold.ttf"),
+                        font_size: 40.0,
+                        color: Color::WHITE,
+                    },
+                ),
+                ..Default::default()
+            });
+        });
+    });
+}
+
+pub fn spawn_menu(
+    commands:  Commands,
+    query: Query<Entity, With<MenuUI>>,
+    state: ResMut<State<GameState>>,
+    asset_server: Res<AssetServer>,
+) {
+    if *state.get() == GameState::Running || *state.get() == GameState::Paused{
+        game_menus(commands, asset_server)
+    }
+}
+
+pub fn despawn_menu(
+    mut commands: Commands,
+    query: Query<Entity, With<MenuUI>>,
+    mut state: ResMut<State<GameState>>,
+) {
+    if *state.get() == GameState::Running {
+        for entity in query.iter() {
+            commands.entity(entity).despawn_recursive();
+        }
+    }
+}
+
+pub fn menu_action_system(
+    mut interaction_query: Query<(&Interaction, &mut BackgroundColor, &StartButton), (Changed<Interaction>, With<Button>)>,
+    mut state: ResMut<NextState<GameState>>,
+    mut commands: Commands,
+    mut asset_server:  Res<AssetServer>,
+) {
+    for (interaction, mut color, _start_button) in interaction_query.iter_mut() {
+        match *interaction {
+            Interaction::Pressed => {
+                state.set(GameState::Running);
+                menu_sound(&asset_server, &mut commands);
+            }
+            Interaction::Hovered => {
+                *color = BackgroundColor(Color::srgb(0.35, 0.75, 0.35));
+                menu_sound(&asset_server, &mut commands);
+            }
+            Interaction::None => {
+                *color = BackgroundColor(Color::srgb(0.25, 0.25, 0.75));
+            }
+        }
+    }
+}
+
+pub fn quit_action_system(
+    mut interaction_query: Query<(&Interaction, &mut BackgroundColor, &QuitButton), (Changed<Interaction>, With<Button>)>,
+    mut exit: EventWriter<AppExit>,
+    mut commands: Commands,
+    mut asset_server:  Res<AssetServer>,
+) {
+    for (interaction, mut color, _quit_button) in interaction_query.iter_mut() {
+        match *interaction {
+            Interaction::Pressed => {
+                menu_sound(&asset_server, &mut commands);
+                exit.send(AppExit::Success);
+            }
+            Interaction::Hovered => {
+                menu_sound(&asset_server, &mut commands);
+                *color = Color::srgb(0.75, 0.35, 0.35).into();
+            }
+            Interaction::None => {
+                *color = Color::srgb(0.75, 0.25, 0.25).into();
+            }
+        }
+    }
+}
 
 pub fn handle_escape_pressed(
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -853,11 +994,8 @@ pub fn ranged_sound(
     });
 }
 
-
-
-pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut state: ResMut<NextState<GameState>>) {
-    commands.spawn(Camera2dBundle::default());
-    state.set(GameState::Running);
+pub fn game_menus(    mut commands: Commands,
+    mut asset_server:  Res<AssetServer>,) {
     commands.spawn(
         TextBundle::from_section(
             "WASD to Move around, Q to Melee, E for Ranged, T for AoE, F to Dash",
@@ -987,6 +1125,14 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut state: 
             }
         });
     });
+}
+
+
+
+pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut state: ResMut<NextState<GameState>>) {
+    commands.spawn(Camera2dBundle::default());
+    state.set(GameState::Menu);
+    
 
     let game_textures = GameTextures {
         player: asset_server.load(PLAYER_SPRITE),
