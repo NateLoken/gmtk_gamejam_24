@@ -16,6 +16,9 @@ pub struct CooldownUi;
 pub struct Line;
 
 #[derive(Component)]
+pub struct wallpaper;
+
+#[derive(Component)]
 pub struct Player {
     pub health: i32,
     pub x: f32,

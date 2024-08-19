@@ -6,7 +6,7 @@ use bevy::transform::commands;
 use bevy::utils::HashSet;
 use bevy::window::PrimaryWindow;
 use bevy::ui::{AlignItems, JustifyContent, Val, UiRect, Style};
-use crate::components::{Ability, Bigfoot, BigfootState, CollisionBox, CooldownUi, Cooldowns, DirectionComponent, GameOverUI, GameTimer, GameTimerText, HealthText, Invulnerability, Lifetime, Line, Map, MapGrid, MenuUI, MousePosition, MovementSpeed, PauseMenu, Player, PointMarker, Points, QuitButton, Resettable, Score, ScoreText, StartButton, Tag};
+use crate::components::{wallpaper, Ability, Bigfoot, BigfootState, CollisionBox, CooldownUi, Cooldowns, DirectionComponent, GameOverUI, GameTimer, GameTimerText, HealthText, Invulnerability, Lifetime, Line, Map, MapGrid, MenuUI, MousePosition, MovementSpeed, PauseMenu, Player, PointMarker, Points, QuitButton, Resettable, Score, ScoreText, StartButton, Tag};
 use crate::events::{CollisionEvent};
 use crate::player::player_spawn_system;
 use crate::{GameState, MAP_SPIRITE};
@@ -476,8 +476,23 @@ pub fn update_bigfoot_position(
     }
 }
 
+
 pub fn setup_menu(mut commands:  Commands, asset_server:  Res<AssetServer>) {
+    commands.spawn(
+        SpriteBundle {
+            texture: asset_server.load("./wallpaper.png"), // Assuming a texture is available
+            transform: Transform {
+                translation: Vec3::new(0.0, 0.0, 3.0),
+                //translation: Vec3::new(player_position.x, player_position.y, 0.0),
+                //scale: Vec3::new(0.7, 0.7, 1.0), // Adjusted scale for a 250 radius
+                ..Default::default()
+            },
+            ..Default::default()
+        },)
+        .insert(wallpaper);
+        
     // Root node
+    
     commands.spawn(NodeBundle {
         style: Style {
             width: Val::Percent(100.0), 
@@ -486,10 +501,11 @@ pub fn setup_menu(mut commands:  Commands, asset_server:  Res<AssetServer>) {
             align_items: AlignItems::Center,
             ..Default::default()
         },
-        background_color: Color::srgba(0.15, 0.15, 0.15, 1.0).into(),
+        //background_color: Color::srgba(0.15, 0.15, 0.15, 1.0).into(),
         ..Default::default()
         
     }).insert(MenuUI)
+    //.insert(background_handle)
     .with_children(|parent| {
         // Start button
         parent.spawn(ButtonBundle {
@@ -555,7 +571,8 @@ pub fn setup_game_over_screen(
     score: Res<Score>,
     game_timer: Res<GameTimer>,
 ) {
-    // Root node
+    let background_handle: Handle<Image> = asset_server.load("./wallpaper.png");
+    
     commands.spawn(NodeBundle {
         style: Style {
             width: Val::Percent(100.0), 
@@ -565,10 +582,10 @@ pub fn setup_game_over_screen(
             flex_direction: FlexDirection::Column,  // Stack elements vertically
             ..Default::default()
         },
-        background_color: Color::srgba(0.15, 0.15, 0.15, 1.0).into(),
         ..Default::default()
     })
     .insert(GameOverUI)
+    .insert(background_handle)
     .with_children(|parent| {
         parent.spawn(TextBundle {
             text: Text::from_section(
@@ -682,6 +699,18 @@ pub fn despawn_menu(
             commands.entity(entity).despawn_recursive();
         }
     }
+}
+
+pub fn kill_wallpaper(
+    mut commands: Commands,
+   query: Query<Entity, With<wallpaper>>,
+   mut state: ResMut<State<GameState>>,
+) {
+
+       for entity in query.iter() {
+            println!("herre");
+           commands.entity(entity).despawn_recursive();
+       }
 }
 
 pub fn menu_action_system(
