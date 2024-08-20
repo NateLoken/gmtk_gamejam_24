@@ -2,6 +2,8 @@
 use bevy::{prelude::*, utils::{hashbrown::HashSet}};
 use std::{collections::{HashMap}, fmt};
 
+use crate::death_sound;
+
 // Common Components
 #[derive(Component)]
 pub struct Velocity {
@@ -46,6 +48,7 @@ impl Player {
         commands: &mut Commands,
         invulnerability_option: Option<&mut Invulnerability>,
         state: &mut ResMut<NextState<GameState>>,
+        asset_server: & Res<AssetServer>,
     ) {
         if let Some(invulnerability) = invulnerability_option {
             if invulnerability.is_active() {
@@ -63,6 +66,7 @@ impl Player {
         println!("Player took {} damage, remaining health: {}", amount, self.health);
 
         if self.health <= 0 {
+            death_sound(asset_server, commands);
             state.set(GameState::GameOver);
         }
         commands.entity(entity).insert(Invulnerability::new(1.0));

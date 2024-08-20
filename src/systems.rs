@@ -312,7 +312,7 @@ pub fn check_collisions(
                         }
                     }
     
-                    player.take_damage(100, entity, &mut commands, invulnerability_option.as_deref_mut(), &mut state);
+                    player.take_damage(100, entity, &mut commands, invulnerability_option.as_deref_mut(), &mut state, &asset_server);
             }
                 }
             }
@@ -401,8 +401,8 @@ pub fn update_bigfoot(
                                     entity,
                                     &mut commands,
                                     Some(invulnerability), // Pass the mutable reference
-                                    &mut state
-
+                                    &mut state,
+                                    &asset_server
                                 );
                             } else {
                                 player.take_damage(
@@ -410,7 +410,8 @@ pub fn update_bigfoot(
                                     entity,
                                     &mut commands,
                                     None, 
-                                    &mut state
+                                    &mut state,
+                                    &asset_server
                                 );
                             }
                         }
@@ -1040,6 +1041,17 @@ pub fn menu_sound(
     // Create an entity dedicated to playing our background music
     &mut commands.spawn(AudioBundle {
         source: asset_server.load("./sfx/select.ogg"),
+        settings: PlaybackSettings::ONCE,
+    });
+}
+
+pub fn death_sound(
+    asset_server: &Res<AssetServer>,
+    commands: &mut Commands
+) {
+    // Create an entity dedicated to playing our background music
+    &mut commands.spawn(AudioBundle {
+        source: asset_server.load("./sfx/death.ogg"),
         settings: PlaybackSettings::ONCE,
     });
 }

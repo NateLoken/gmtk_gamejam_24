@@ -174,7 +174,7 @@ fn ranged_attack(
             SpriteBundle {
                 texture: game_textures.dash.clone(),
                 transform: Transform {
-                    translation: Vec3::new(midpoint.x, midpoint.y, 0.),
+                    translation: Vec3::new(midpoint.x, midpoint.y, 1.),
                     rotation: Quat::from_rotation_z(angle),
                     scale: Vec3::new(1100.0, SPRITE_SCALE, 0.),
                     ..Default::default()
@@ -209,7 +209,7 @@ fn dash_attack(
         commands.spawn(SpriteBundle {
             texture: game_textures.dash.clone(),
             transform: Transform {
-                translation: Vec3::new(midpoint.x, midpoint.y, 0.),
+                translation: Vec3::new(midpoint.x, midpoint.y, 1.),
                 rotation: Quat::from_rotation_z(angle),
                 scale: Vec3::new(length, SPRITE_SCALE, 0.),
                 ..Default::default()
@@ -269,7 +269,7 @@ fn melee_attack(
                     SpriteBundle {
                         texture: game_textures.dash.clone(),
                         transform: Transform {
-                            translation: Vec3::new(arc_point.x, arc_point.y, 0.),
+                            translation: Vec3::new(arc_point.x, arc_point.y, 1.),
                             scale: Vec3::new(5., 5., 0.),
                             ..Default::default()
                         },
@@ -316,7 +316,7 @@ fn aoe_attack(
                     SpriteBundle {
                         texture: game_textures.dash.clone(),
                         transform: Transform {
-                            translation: Vec3::new(circle_point.x, circle_point.y, 0.),
+                            translation: Vec3::new(circle_point.x, circle_point.y, 1.),
                             scale: Vec3::new(5., 5., 0.),
                             ..Default::default()
                         },
