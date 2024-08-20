@@ -1,3 +1,4 @@
+use bevy::audio::{PlaybackMode, Volume};
 use bevy::input::keyboard::Key;
 use bevy::input::mouse::{self, MouseMotion};
 use bevy::{prelude::*, time};
@@ -387,6 +388,7 @@ pub fn update_bigfoot(
 
                      // Change the texture based on the state
                      cycle_texture(&mut texture, &bigfoot);
+                     stomp_sound(&asset_server, &mut commands);
                      
                     if let Ok((mut player, mut invulnerability_option)) = player_query.get_single_mut() {
                         let player_position = Vec3 { x: player.x, y: player.y, z: 1.0 };
@@ -479,6 +481,9 @@ pub fn update_bigfoot_position(
 
 
 pub fn setup_menu(mut commands:  Commands, asset_server:  Res<AssetServer>) {
+    
+
+    
     commands.spawn(
         SpriteBundle {
             texture: asset_server.load("./wallpaper.png"), // Assuming a texture is available
@@ -491,6 +496,61 @@ pub fn setup_menu(mut commands:  Commands, asset_server:  Res<AssetServer>) {
             ..Default::default()
         },)
         .insert(wallpaper);
+
+
+
+    commands.spawn(NodeBundle {
+        style: Style {
+            width: Val::Percent(100.0), 
+            height: Val::Percent(100.0),
+            justify_content: JustifyContent::FlexStart,
+            align_items: AlignItems::Center,
+            flex_direction: FlexDirection::Column,  // Stack elements vertically
+            ..Default::default()
+        },
+        ..Default::default()
+    })
+    .insert(GameOverUI)
+    .with_children(|parent| {
+        parent.spawn(TextBundle {
+            text: Text::from_section(
+                "Gashadokuro Escape",
+                TextStyle {
+                    font: asset_server.load("FiraSans-Bold.ttf"),
+                    font_size: 120.0,
+                    color: Color::WHITE,
+                },
+            ),
+            ..Default::default()
+        })
+        .insert(wallpaper);
+    
+        parent.spawn(TextBundle {
+            text: Text::from_section(
+                "Defeat the skeleton without being hit to win",
+                TextStyle {
+                    font: asset_server.load("FiraSans-Bold.ttf"),
+                    font_size: 60.0,
+                    color: Color::WHITE,
+                },
+            ),
+            ..Default::default()
+        })
+        .insert(wallpaper);;
+
+        parent.spawn(TextBundle {
+            text: Text::from_section(
+                "WASD to Move around, Q to Melee, E for Ranged, T for AoE, F to Dash",
+                TextStyle {
+                    font: asset_server.load("FiraSans-Bold.ttf"),
+                    font_size: 30.0,
+                    color: Color::WHITE,
+                },
+            ),
+            ..Default::default()
+        })
+        .insert(wallpaper);;
+    });
         
     // Root node
     
@@ -793,14 +853,14 @@ pub fn flicker_system(
         // If the player is invulnerable, adjust the alpha value to create a flicker effect
         if invulnerability.is_active() {
             // Flicker by adjusting alpha value between 0.2 and 1.0
-            let flicker_phase = (invulnerability.timer.elapsed_secs() * 10.0).sin();
+            let flicker_phase = f32::sin(15.0); //maybe fixed
             let new_alpha = 0.5 * flicker_phase.abs();
 
             // Directly set the alpha using set_alpha
             sprite.color.set_alpha(new_alpha);
         } else {
             // Ensure the player is fully visible when not invulnerable
-            sprite.color.set_alpha(1.0);
+            sprite.color.set_alpha(0.99);
         }
     }
 }
@@ -1039,9 +1099,13 @@ pub fn menu_sound(
     commands: &mut Commands
 ) {
     // Create an entity dedicated to playing our background music
-    &mut commands.spawn(AudioBundle {
+    let _ = &mut commands.spawn(AudioBundle {
         source: asset_server.load("./sfx/select.ogg"),
-        settings: PlaybackSettings::ONCE,
+        settings: PlaybackSettings {
+            mode: PlaybackMode::Once,
+            volume: Volume::new(1.3),
+            ..Default::default()
+        }
     });
 }
 
@@ -1050,9 +1114,13 @@ pub fn death_sound(
     commands: &mut Commands
 ) {
     // Create an entity dedicated to playing our background music
-    &mut commands.spawn(AudioBundle {
+    let _ = &mut commands.spawn(AudioBundle {
         source: asset_server.load("./sfx/death.ogg"),
-        settings: PlaybackSettings::ONCE,
+        settings: PlaybackSettings {
+            mode: PlaybackMode::Once,
+            volume: Volume::new(0.3),
+            ..Default::default()
+        }
     });
 }
 
@@ -1074,9 +1142,13 @@ pub fn play_empty_swing(
     // Select the sound based on the random index
     let selected_sound = sounds[random_index];
     // Create an entity dedicated to playing our background music
-    commands.spawn(AudioBundle {
+    let _ = &mut commands.spawn(AudioBundle {
         source: asset_server.load(selected_sound),
-        settings: PlaybackSettings::ONCE,
+        settings: PlaybackSettings {
+            mode: PlaybackMode::Once,
+            volume: Volume::new(1.0),
+            ..Default::default()
+        }
     });
 }
 
@@ -1098,9 +1170,13 @@ pub fn play_hit_swing(
     // Select the sound based on the random index
     let selected_sound = sounds[random_index];
     // Create an entity dedicated to playing our background music
-    &mut commands.spawn(AudioBundle {
+    let _ = &mut commands.spawn(AudioBundle {
         source: asset_server.load(selected_sound),
-        settings: PlaybackSettings::ONCE,
+        settings: PlaybackSettings {
+            mode: PlaybackMode::Once,
+            volume: Volume::new(1.0),
+            ..Default::default()
+        }
     });
 }
 
@@ -1108,10 +1184,13 @@ pub fn bone_hit(
     asset_server: &Res<AssetServer>,
     commands: &mut Commands
 ) {
-    // Create an entity dedicated to playing our background music
-    &mut commands.spawn(AudioBundle {
+    let _ = &mut commands.spawn(AudioBundle {
         source: asset_server.load("./sfx/bone.ogg"),
-        settings: PlaybackSettings::ONCE,
+        settings: PlaybackSettings {
+            mode: PlaybackMode::Once,
+            volume: Volume::new(0.15),
+            ..Default::default()
+        }
     });
 }
 
@@ -1120,9 +1199,13 @@ pub fn dash_sound(
     commands: &mut Commands
 ) {
     // Create an entity dedicated to playing our background music
-    &mut commands.spawn(AudioBundle {
+    let _ = &mut commands.spawn(AudioBundle {
         source: asset_server.load("./sfx/dash.ogg"),
-        settings: PlaybackSettings::ONCE,
+        settings: PlaybackSettings {
+            mode: PlaybackMode::Once,
+            volume: Volume::new(2.75),
+            ..Default::default()
+        }
     });
 }
 
@@ -1131,9 +1214,13 @@ pub fn aoe_sound(
     commands: &mut Commands
 ) {
     // Create an entity dedicated to playing our background music
-    &mut commands.spawn(AudioBundle {
+    let _ = &mut commands.spawn(AudioBundle {
         source: asset_server.load("./sfx/aoe.ogg"),
-        settings: PlaybackSettings::ONCE,
+        settings: PlaybackSettings {
+            mode: PlaybackMode::Once,
+            volume: Volume::new(0.8),
+            ..Default::default()
+        }
     });
 }
 pub fn update_timer(
@@ -1155,9 +1242,13 @@ pub fn stomp_sound(
     commands: &mut Commands
 ) {
     // Create an entity dedicated to playing our background music
-    &mut commands.spawn(AudioBundle {
+    let _ = &mut commands.spawn(AudioBundle {
         source: asset_server.load("./sfx/stomp.ogg"),
-        settings: PlaybackSettings::ONCE,
+        settings: PlaybackSettings {
+            mode: PlaybackMode::Once,
+            volume: Volume::new(0.6),
+            ..Default::default()
+        }
     });
 }
 
@@ -1166,9 +1257,13 @@ pub fn ranged_sound(
     commands: &mut Commands
 ) {
     // Create an entity dedicated to playing our background music
-    &mut commands.spawn(AudioBundle {
+    let _ = &mut commands.spawn(AudioBundle {
         source: asset_server.load("./sfx/ranged.ogg"),
-        settings: PlaybackSettings::ONCE,
+        settings: PlaybackSettings {
+            mode: PlaybackMode::Once,
+            volume: Volume::new(0.6),
+            ..Default::default()
+        }
     });
 }
 

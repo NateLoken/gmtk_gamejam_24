@@ -183,7 +183,7 @@ fn ranged_attack(
             }
         )
             .insert(Line)
-            .insert(CollisionBox::new(1100.0, 100.0))
+            .insert(CollisionBox::new(1100.0, 150.0))
             .insert(Lifetime {
                 timer: Timer::from_seconds(0.005, TimerMode::Once)
             });
