@@ -7,7 +7,7 @@ use bevy::transform::commands;
 use bevy::utils::HashSet;
 use bevy::window::PrimaryWindow;
 use bevy::ui::{AlignItems, JustifyContent, Val, UiRect, Style};
-use crate::components::{wallpaper, Ability, Bigfoot, BigfootState, CollisionBox, CooldownUi, Cooldowns, DirectionComponent, GameOverUI, GameTimer, GameTimerText, HealthText, Invulnerability, Lifetime, Line, Map, MapGrid, MenuUI, MousePosition, MovementSpeed, PauseMenu, Player, PointMarker, Points, QuitButton, Resettable, Score, ScoreText, StartButton, Tag};
+use crate::components::{wallpaper, Ability, Bigfoot, BigfootState, CollisionBox, CooldownUi, Cooldowns, DirectionComponent, GameOverUI, GameTimer, GameTimerText, GameUI, HealthText, Invulnerability, Lifetime, Line, Map, MapGrid, MenuUI, MousePosition, MovementSpeed, PauseMenu, Player, PointMarker, Points, QuitButton, Resettable, RestartButton, Score, ScoreText, StartButton, Tag};
 use crate::events::{CollisionEvent};
 use crate::player::player_spawn_system;
 use crate::{GameState, MAP_SPIRITE};
@@ -82,13 +82,6 @@ pub fn enemy_killed(score: &mut ResMut<Score>, mut player: &mut Player, cooldown
         }
     }
 }
-
-pub fn display_score(_score: Res<Score>) {
-    //println!("Enemies killed: {}", score.get_enemies_killed());
-}
-
-
-
 pub fn check_collisions(
     mut player_query: Query<(Entity, &mut Player, &CollisionBox, &Transform, Option<Mut<Invulnerability>>)>,    
     other_entities_query: Query<(Entity, &Transform, &CollisionBox), (Without<Player>, Without<Line>, Without<PointMarker>)>,
@@ -145,6 +138,7 @@ pub fn check_collisions(
                         if (bigfoot.health <= 0) {
                             println!("Bigfoot defeated!");
                             commands.entity(*bigfoot_entity).despawn_recursive(); // Fully despawn Bigfoot
+                            state.set(GameState::Won);
                         }
                         
                     } else {
@@ -185,6 +179,7 @@ pub fn check_collisions(
                         if (bigfoot.health <= 0) {
                             println!("Bigfoot defeated by a point!");
                             commands.entity(*bigfoot_entity).despawn_recursive(); // Fully despawn Bigfoot
+                            state.set(GameState::Won);
                         }
                     } else {
                         println!("Bigfoot is invulnerable, skipping collision with point.");
@@ -338,7 +333,7 @@ pub fn spawn_bigfoot(
             SpriteBundle {
                 texture: asset_server.load("foot.png"), // Assuming a texture is available
                 transform: Transform {
-                    translation: Vec3::new(100., player_position.y, 1.0),
+                    translation: Vec3::new(550., 300.0, 1.0),
                     //translation: Vec3::new(player_position.x, player_position.y, 0.0),
                     scale: Vec3::new(0.7, 0.7, 1.0), // Adjusted scale for a 250 radius
                     ..Default::default()
@@ -348,7 +343,7 @@ pub fn spawn_bigfoot(
             Bigfoot {
                 timer: Timer::from_seconds(2.5, TimerMode::Once),
                 state: BigfootState::Invulnerable,
-                health: 5,
+                health: 100,
                 x: player_position.x,  // Store the initial position
                 y: player_position.y,  // Store the initial position
                 airTexture: asset_server.load("foot.png"),
@@ -480,15 +475,16 @@ pub fn update_bigfoot_position(
 }
 
 
-pub fn setup_menu(mut commands:  Commands, asset_server:  Res<AssetServer>) {
+pub fn setup_menu(mut commands:  Commands, asset_server:  Res<AssetServer>, player_query: Query<&Transform, With<Player>>,) {
     
-
+    if let Ok(player_transform) = player_query.get_single() {
+        let player_position = player_transform.translation;
     
     commands.spawn(
         SpriteBundle {
             texture: asset_server.load("./wallpaper.png"), // Assuming a texture is available
             transform: Transform {
-                translation: Vec3::new(0.0, 0.0, 3.0),
+                translation: Vec3::new(player_position.x, player_position.y, 3.0),
                 //translation: Vec3::new(player_position.x, player_position.y, 0.0),
                 //scale: Vec3::new(0.7, 0.7, 1.0), // Adjusted scale for a 250 radius
                 ..Default::default()
@@ -497,7 +493,7 @@ pub fn setup_menu(mut commands:  Commands, asset_server:  Res<AssetServer>) {
         },)
         .insert(wallpaper);
 
-
+    }
 
     commands.spawn(NodeBundle {
         style: Style {
@@ -536,7 +532,7 @@ pub fn setup_menu(mut commands:  Commands, asset_server:  Res<AssetServer>) {
             ),
             ..Default::default()
         })
-        .insert(wallpaper);;
+        .insert(wallpaper);
 
         parent.spawn(TextBundle {
             text: Text::from_section(
@@ -650,6 +646,17 @@ pub fn setup_game_over_screen(
     .with_children(|parent| {
         parent.spawn(TextBundle {
             text: Text::from_section(
+                format!("You fell to Gashadokuru!"),
+                TextStyle {
+                    font: asset_server.load("FiraSans-Bold.ttf"),
+                    font_size: 100.0,
+                    color: Color::WHITE,
+                },
+            ),
+            ..Default::default()
+        });
+        parent.spawn(TextBundle {
+            text: Text::from_section(
                 format!("Final Score: {}", score.get_enemies_killed()),
                 TextStyle {
                     font: asset_server.load("FiraSans-Bold.ttf"),
@@ -693,7 +700,7 @@ pub fn setup_game_over_screen(
             background_color: Color::srgba(0.25, 0.75, 0.25, 1.0).into(),
             ..Default::default()
         })
-        .insert(StartButton)
+        
         .with_children(|parent| {
             parent.spawn(TextBundle {
                 text: Text::from_section(
@@ -706,7 +713,7 @@ pub fn setup_game_over_screen(
                 ),
                 ..Default::default()
             });
-        });
+        }).insert(RestartButton);
         parent.spawn(ButtonBundle {
             style: Style {
                 width: Val::Px(200.0), 
@@ -736,6 +743,161 @@ pub fn setup_game_over_screen(
     
         // Other buttons and UI elements
     });
+}
+
+pub fn won_game(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    score: Res<Score>,
+    game_timer: Res<GameTimer>,
+    player_query: Query<&Transform, With<Player>>,
+) {
+    let background_handle: Handle<Image> = asset_server.load("./victory.png");
+    
+        if let Ok(player_transform) = player_query.get_single() {
+            let player_position = player_transform.translation;
+    commands.spawn(
+        SpriteBundle {
+            texture: asset_server.load("./victory.png"), // Assuming a texture is available
+            transform: Transform {
+                translation: Vec3::new(player_position.x, player_position.y, 3.0),
+                //translation: Vec3::new(player_position.x, player_position.y, 0.0),
+                //scale: Vec3::new(0.7, 0.7, 1.0), // Adjusted scale for a 250 radius
+                ..Default::default()
+            },
+            ..Default::default()
+        },)
+        .insert(wallpaper);
+        }
+    commands.spawn(NodeBundle {
+        style: Style {
+            width: Val::Percent(100.0), 
+            height: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            flex_direction: FlexDirection::Column,  // Stack elements vertically
+            ..Default::default()
+        },
+        ..Default::default()
+    })
+    .insert(GameOverUI)
+    .insert(background_handle)
+    
+    .with_children(|parent| {
+        parent.spawn(TextBundle {
+            text: Text::from_section(
+                format!("Gashadokuru Slain!"),
+                TextStyle {
+                    font: asset_server.load("FiraSans-Bold.ttf"),
+                    font_size: 100.0,
+                    color: Color::WHITE,
+                },
+            ),
+            ..Default::default()
+        });
+        parent.spawn(TextBundle {
+            text: Text::from_section(
+                format!("Final Score: {}", score.get_enemies_killed()),
+                TextStyle {
+                    font: asset_server.load("FiraSans-Bold.ttf"),
+                    font_size: 40.0,
+                    color: Color::WHITE,
+                },
+            ),
+            ..Default::default()
+        });
+    
+        parent.spawn(TextBundle {
+            text: Text::from_section(
+                format!("Time Survived: {:.1} seconds", game_timer.0),
+                TextStyle {
+                    font: asset_server.load("FiraSans-Bold.ttf"),
+                    font_size: 40.0,
+                    color: Color::WHITE,
+                },
+            ),
+            ..Default::default()
+        });
+    
+        // Add a spacing node between the text and the buttons
+        parent.spawn(NodeBundle {
+            style: Style {
+                height: Val::Px(50.0), // Spacing
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+    
+        parent.spawn(ButtonBundle {
+            style: Style {
+                width: Val::Px(200.0), 
+                height: Val::Px(65.0),
+                margin: UiRect::all(Val::Px(10.0)),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..Default::default()
+            },
+            background_color: Color::srgba(0.25, 0.75, 0.25, 1.0).into(),
+            ..Default::default()
+        })
+        
+        .with_children(|parent| {
+            parent.spawn(TextBundle {
+                text: Text::from_section(
+                    "Play Again",
+                    TextStyle {
+                        font: asset_server.load("FiraSans-Bold.ttf"),
+                        font_size: 40.0,
+                        color: Color::WHITE,
+                    },
+                ),
+                ..Default::default()
+            });
+        }).insert(RestartButton);
+        parent.spawn(ButtonBundle {
+            style: Style {
+                width: Val::Px(200.0), 
+                height: Val::Px(65.0),
+                margin: UiRect::all(Val::Px(10.0)),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..Default::default()
+            },
+            background_color: Color::srgba(0.75, 0.25, 0.25, 0.5).into(),
+            ..Default::default()
+        })
+        .insert(QuitButton)
+        .with_children(|parent| {
+            parent.spawn(TextBundle {
+                text: Text::from_section(
+                    "Quit",
+                    TextStyle {
+                        font: asset_server.load("FiraSans-Bold.ttf"),
+                        font_size: 40.0,
+                        color: Color::WHITE,
+                    },
+                ),
+                ..Default::default()
+            });
+        });
+    
+        // Other buttons and UI elements
+    });
+}
+
+pub fn check_won_game(
+    mut commands:  Commands,
+    query: Query<Entity, With<MenuUI>>,
+    state: ResMut<State<GameState>>,
+    mut asset_server:   Res<AssetServer>,
+    score: Res<Score>,
+    game_timer: Res<GameTimer>,
+    player_query: Query<&Transform, With<Player>>,
+) {
+    if *state.get() == GameState::Won {
+        println!("won");
+        won_game(commands, asset_server, score, game_timer, player_query);
+    }
 }
 
 
@@ -774,6 +936,27 @@ pub fn kill_wallpaper(
        }
 }
 
+pub fn kill_game_over_ui(
+    mut commands: Commands,
+   query: Query<Entity, With<GameOverUI>>,
+   mut state: ResMut<State<GameState>>,
+) {
+
+       for entity in query.iter() {
+           commands.entity(entity).despawn_recursive();
+       }
+}
+
+pub fn kill_game_ui(
+    mut commands: Commands,
+   query: Query<Entity, With<GameUI>>,
+   mut state: ResMut<State<GameState>>,
+) {
+       for entity in query.iter() {
+           commands.entity(entity).despawn_recursive();
+       }
+}
+
 pub fn menu_action_system(
     mut interaction_query: Query<(&Interaction, &mut BackgroundColor, &StartButton), (Changed<Interaction>, With<Button>)>,
     mut state: ResMut<NextState<GameState>>,
@@ -783,7 +966,30 @@ pub fn menu_action_system(
     for (interaction, mut color, _start_button) in interaction_query.iter_mut() {
         match *interaction {
             Interaction::Pressed => {
-                state.set(GameState::Running);
+                state.set(GameState::Reset);
+                menu_sound(&asset_server, &mut commands);
+            }
+            Interaction::Hovered => {
+                *color = BackgroundColor(Color::srgb(0.35, 0.75, 0.35));
+                menu_sound(&asset_server, &mut commands);
+            }
+            Interaction::None => {
+                *color = BackgroundColor(Color::srgb(0.25, 0.25, 0.75));
+            }
+        }
+    }
+}
+
+pub fn restart_action_system(
+    mut interaction_query: Query<(&Interaction, &mut BackgroundColor, &RestartButton), (Changed<Interaction>, With<Button>)>,
+    mut state: ResMut<NextState<GameState>>,
+    mut commands: Commands,
+    mut asset_server:  Res<AssetServer>,
+) {
+    for (interaction, mut color, _start_button) in interaction_query.iter_mut() {
+        match *interaction {
+            Interaction::Pressed => {
+                state.set(GameState::Reset);
                 menu_sound(&asset_server, &mut commands);
             }
             Interaction::Hovered => {
@@ -826,6 +1032,7 @@ pub fn handle_escape_pressed(
     mut curr_state: ResMut<State<GameState>>,
     mut commands: Commands,
     mut asset_server:  Res<AssetServer>,
+    query: Query<Entity, With<MenuUI>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         menu_sound(&asset_server, &mut commands);
@@ -837,10 +1044,13 @@ pub fn handle_escape_pressed(
         }
     }else if keyboard_input.just_pressed(KeyCode::KeyB) {
         if *curr_state.get() == GameState::Paused {
-            state.set(GameState::Reset);
+            state.set(GameState::Menu);
+            //despawn_menu(commands, query, asset_server.as_must);
+            //setup_menu(commands, asset_server);
         }
     }  
     }
+
 
 pub fn flicker_system(
     time: Res<Time>,
@@ -1209,6 +1419,51 @@ pub fn dash_sound(
     });
 }
 
+pub fn reset_game(
+    mut commands: Commands,
+    mut player_query: Query<&mut Player>,
+    mut bigfoot_query: Query<&mut Bigfoot>,
+    enemy_query: Query<Entity, (With<Resettable>, Without<Player>)>,
+    mut score: ResMut<Score>,
+    mut game_timer: ResMut<GameTimer>,
+    mut state: ResMut<State<GameState>>,
+    mut next_state: ResMut<NextState<GameState>>,
+    player_transform: Query<&Transform, With<Player>>, 
+    asset_server: Res<AssetServer>,
+    mut cooldowns_query: Query<&mut Cooldowns>,
+) {
+    // Only proceed if the game state is Reset
+    if *state.get() == GameState::Reset {
+        // Reset player health and position
+        if let Ok(mut player) = player_query.get_single_mut() {
+            player.health = 500;
+            player.x = 0.0;
+            player.y = 0.0;
+        }
+
+        // Despawn all enemies with the Spawned tag
+        for enemy_entity in enemy_query.iter() {
+            commands.entity(enemy_entity).despawn_recursive();
+        }
+
+        if let Ok(mut cooldowns) = cooldowns_query.get_single_mut() {
+            cooldowns.reset_all();
+        }
+
+        // Spawn Bigfoot
+        spawn_bigfoot(commands, player_transform, asset_server);
+
+        // Reset score
+        score.reset();
+
+        // Reset game timer
+        game_timer.0 = 0.0;
+
+        // Transition back to the Running state
+        next_state.set(GameState::Running);
+    }
+}
+
 pub fn aoe_sound(
     asset_server: &Res<AssetServer>,
     commands: &mut Commands
@@ -1283,7 +1538,8 @@ pub fn game_menus(    commands: &mut Commands,
             left: Val::Px(12.),
             ..default()
         }),
-    );
+    ).insert(GameUI);
+    
     commands.spawn(NodeBundle {
         style: Style {
             width: Val::Percent(100.0), 
@@ -1293,6 +1549,7 @@ pub fn game_menus(    commands: &mut Commands,
         },
         ..Default::default()
     })
+    .insert(GameUI)
     .with_children(|parent| {
         // Health and Score container
         parent.spawn(NodeBundle {
@@ -1306,6 +1563,7 @@ pub fn game_menus(    commands: &mut Commands,
             },
             ..Default::default()
         })
+        .insert(GameUI)
         .with_children(|parent| {
             // Health Text
             parent.spawn(TextBundle {
@@ -1320,8 +1578,8 @@ pub fn game_menus(    commands: &mut Commands,
                 ..Default::default()
             })
             .insert(Resettable)
-            .insert(HealthText);
-
+            .insert(HealthText)
+            .insert(GameUI);
 
             parent.spawn(TextBundle {
                 text: Text::from_section(
@@ -1335,7 +1593,8 @@ pub fn game_menus(    commands: &mut Commands,
                 ..Default::default()
             })
             .insert(Resettable)
-            .insert(GameTimerText);
+            .insert(GameTimerText)
+            .insert(GameUI);
 
             // Score Text
             parent.spawn(TextBundle {
@@ -1354,7 +1613,8 @@ pub fn game_menus(    commands: &mut Commands,
                 ..Default::default()
             })
             .insert(Resettable)
-            .insert(ScoreText);
+            .insert(ScoreText)
+            .insert(GameUI);
         });
 
         // Ability boxes container at the bottom
@@ -1411,7 +1671,8 @@ pub fn game_menus(    commands: &mut Commands,
                         ..Default::default()
                     })
                     .insert(CooldownUi)
-                .insert(Resettable);
+                .insert(Resettable)
+                .insert(GameUI);
                 });
             }
         });

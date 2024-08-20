@@ -40,6 +40,7 @@ impl Player {
             self.health +=amount;
         }
     }
+    
 
         pub fn take_damage(
         &mut self,
@@ -140,6 +141,12 @@ impl Cooldowns {
             None
         }
     }
+
+    pub fn reset_all(&mut self) {
+        for timer in self.cooldowns.values_mut() {
+            timer.reset();
+        }
+    }
     
 }
 
@@ -201,6 +208,10 @@ pub struct GameOverUI;
 #[derive(Component)]
 pub struct Resettable;
 
+#[derive(Component)]
+pub struct GameUI;
+
+
 #[derive(Resource)]
 pub struct Score {
     pub enemies_killed: u32,
@@ -239,7 +250,8 @@ pub enum GameState {
     Menu,
     Paused,
     Reset,
-    GameOver
+    GameOver,
+    Won
 }
 
 #[derive(Resource)]
@@ -252,8 +264,12 @@ pub struct PauseMenu;
 #[derive(Component, PartialEq)]
 pub struct StartButton;
 
+#[derive(Component, PartialEq)]
+pub struct RestartButton;
+
 #[derive(Component)]
 pub struct QuitButton;
+
 
 #[derive(Component)]
 pub struct MenuUI;
