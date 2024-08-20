@@ -146,16 +146,16 @@ fn ability_system(
 }
 
 fn ranged_attack(
-   commands: &mut Commands,
-    query: Query<(Entity, &mut Transform), With<Player>>,
-    mouse_coords: Res<MouseCoords>,
-    game_textures: Res<GameTextures>,
+    commands: &mut Commands,
+    player_query: Query<(Entity, &mut Transform), With<Player>>,
+     mouse_coords: Res<MouseCoords>,
+     game_textures: Res<GameTextures>,
 ) {
-    if let Ok((_, transform)) = query.get_single() {
+    if let Ok((entity, transform)) = player_query.get_single() {
         let player_position = Vec2::new(transform.translation.x, transform.translation.y);
         let mouse_position = Vec2::new(mouse_coords.x, mouse_coords.y);
 
-         // Calculate direction from player to mouse
+        // Calculate the direction from the player to the mouse
         let direction = (mouse_position - player_position).normalize();
         
         // Set the desired line length
@@ -170,23 +170,24 @@ fn ranged_attack(
         // Calculate the angle for proper rotation
         let angle = direction.y.atan2(direction.x);
 
+        // Spawn the sprite representing the ranged attack
         commands.spawn(
             SpriteBundle {
                 texture: game_textures.dash.clone(),
                 transform: Transform {
-                    translation: Vec3::new(midpoint.x, midpoint.y, 1.),
+                    translation: Vec3::new(midpoint.x, midpoint.y, 1.0),
                     rotation: Quat::from_rotation_z(angle),
-                    scale: Vec3::new(1100.0, SPRITE_SCALE, 0.),
+                    scale: Vec3::new(line_length, 50.0, 1.0), // Adjust scale according to the line's length
                     ..Default::default()
                 },
                 ..Default::default()
             }
         )
-            .insert(Line)
-            .insert(CollisionBox::new(1100.0, 150.0))
-            .insert(Lifetime {
-                timer: Timer::from_seconds(0.005, TimerMode::Once)
-            });
+        .insert(Line)
+        .insert(CollisionBox::new(line_length, 50.0)) // Ensure CollisionBox matches the line length
+        .insert(Lifetime {
+            timer: Timer::from_seconds(0.05, TimerMode::Once), // Adjust lifetime to allow sufficient time for collisions
+        });
     }
 }
 

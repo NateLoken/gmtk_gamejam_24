@@ -104,30 +104,48 @@ pub fn check_collisions(
     let bigfoot_entities: HashSet<Entity> = bigfoot_query.iter().collect();
     let mut hit_entities: HashSet<Entity> = HashSet::new(); // Track entities hit in this frame
 
+    // Function to calculate rotated bounding box
+    fn rotated_bounds(transform: &Transform, collision_box: &CollisionBox) -> (Vec2, Vec2) {
+        let rotation = transform.rotation.to_euler(EulerRot::XYZ).2; // Extract Z rotation (yaw)
+        let half_width = collision_box.width / 2.0;
+        let half_height = collision_box.height / 2.0;
+
+        // Corner offsets
+        let offset1 = Vec2::new(-half_width, -half_height);
+        let offset2 = Vec2::new(half_width, half_height);
+
+        // Rotating the corners based on the entity's rotation
+        let rot_matrix = Mat2::from_angle(rotation);
+        let rotated_offset1 = rot_matrix * offset1;
+        let rotated_offset2 = rot_matrix * offset2;
+
+        let min = transform.translation.truncate() + rotated_offset1;
+        let max = transform.translation.truncate() + rotated_offset2;
+
+        (min, max)
+    }
+
     // Handle Bigfoot-specific logic for line collisions
     for bigfoot_entity in bigfoot_entities.iter() {
         if let Ok(mut bigfoot) = bigfoot_state_query.p0().get_mut(*bigfoot_entity) {
             // Bigfoot collision and health management logic here
             for (attack_entity, attack_transform, attack_box) in line_query.iter() {
-                if hit_entities.contains(bigfoot_entity) {
-                    println!("already hit");
-                    continue; // Skip if already hit by a point or line in this frame
-                }
+                let (attack_min, attack_max) = rotated_bounds(attack_transform, attack_box);
 
-                let attack_min_x = attack_transform.translation.x - attack_box.width / 2.0;
-                let attack_max_x = attack_transform.translation.x + attack_box.width / 2.0;
-                let attack_min_y = attack_transform.translation.y - attack_box.height / 2.0;
-                let attack_max_y = attack_transform.translation.y + attack_box.height / 2.0;
+                // let attack_min_x = attack_transform.translation.x - attack_box.width / 2.0;
+                // let attack_max_x = attack_transform.translation.x + attack_box.width / 2.0;
+                // let attack_min_y = attack_transform.translation.y - attack_box.height / 2.0;
+                // let attack_max_y = attack_transform.translation.y + attack_box.height / 2.0;
 
                 let bigfoot_min_x = bigfoot.x - 250.0;
                 let bigfoot_max_x = bigfoot.x + 250.0;
                 let bigfoot_min_y = bigfoot.y - 250.0;
                 let bigfoot_max_y = bigfoot.y + 250.0;
 
-                if attack_max_x > bigfoot_min_x
-                    && attack_min_x < bigfoot_max_x
-                    && attack_max_y > bigfoot_min_y
-                    && attack_min_y < bigfoot_max_y
+                if attack_max.x > bigfoot_min_x
+                    && attack_min.x < bigfoot_max_x
+                    && attack_max.y > bigfoot_min_y
+                    && attack_min.y < bigfoot_max_y
                 {
                     if bigfoot.state != BigfootState::Invulnerable {
                         println!("Bigfoot hit!");
@@ -200,6 +218,7 @@ pub fn check_collisions(
         let enemy_min_y = transform.translation.y - bounding_box.height / 2.0;
         let enemy_max_y = transform.translation.y + bounding_box.height / 2.0;
         for (entity, mut player, player_box, player_transform, mut invulnerability_option) in player_query.iter_mut() {
+        
         for (point_entity, point_transform) in points_query.iter() {
             let point = Vec2::new(point_transform.translation.x, point_transform.translation.y);
 
@@ -229,10 +248,11 @@ pub fn check_collisions(
     for (entity, mut player, player_box, player_transform, mut invulnerability_option) in player_query.iter_mut() {
 
     for (attack_entity, attack_transform, attack_box) in line_query.iter() {
-        let attack_min_x = attack_transform.translation.x - attack_box.width / 2.0;
-        let attack_max_x = attack_transform.translation.x + attack_box.width / 2.0;
-        let attack_min_y = attack_transform.translation.y - attack_box.height / 2.0;
-        let attack_max_y = attack_transform.translation.y + attack_box.height / 2.0;
+        let (attack_min, attack_max) = rotated_bounds(attack_transform, attack_box);
+        // let attack_min_x = attack_transform.translation.x - attack_box.width / 2.0;
+        // let attack_max_x = attack_transform.translation.x + attack_box.width / 2.0;
+        // let attack_min_y = attack_transform.translation.y - attack_box.height / 2.0;
+        // let attack_max_y = attack_transform.translation.y + attack_box.height / 2.0;
 
         for (enemy_entity, enemy_transform, enemy_box) in other_entities_query.iter() {
             let enemy_min_x = enemy_transform.translation.x - enemy_box.width / 2.0;
@@ -240,10 +260,10 @@ pub fn check_collisions(
             let enemy_min_y = enemy_transform.translation.y - enemy_box.height / 2.0;
             let enemy_max_y = enemy_transform.translation.y + enemy_box.height / 2.0;
 
-            if attack_max_x > enemy_min_x
-                && attack_min_x < enemy_max_x
-                && attack_max_y > enemy_min_y
-                && attack_min_y < enemy_max_y
+            if attack_max.x > enemy_min_x
+                && attack_min.x < enemy_max_x
+                && attack_max.y > enemy_min_y
+                && attack_min.y < enemy_max_y
             {
 
                 if bigfoot_entities.contains(&enemy_entity) || hit_entities.contains(&enemy_entity) {
@@ -308,7 +328,7 @@ pub fn check_collisions(
                         }
                     }
     
-                    player.take_damage(100, entity, &mut commands, invulnerability_option.as_deref_mut(), &mut state, &asset_server);
+                    player.take_damage(10, entity, &mut commands, invulnerability_option.as_deref_mut(), &mut state, &asset_server);
             }
                 }
             }
@@ -319,6 +339,53 @@ pub fn check_collisions(
             }
         }
     }
+
+    fn rotated_collision_check(
+        transform: &Transform,
+        collision_box: &CollisionBox,
+        other_transform: &Transform,
+        other_collision_box: &CollisionBox,
+    ) -> bool {
+        let angle = transform.rotation.to_euler(EulerRot::ZYX).0; // Get the Z rotation in radians
+    
+        // Get the four corners of the collision box
+        let half_extents = Vec2::new(collision_box.width / 2.0, collision_box.height / 2.0);
+        let corners = [
+            Vec2::new(-half_extents.x, -half_extents.y),
+            Vec2::new(half_extents.x, -half_extents.y),
+            Vec2::new(half_extents.x, half_extents.y),
+            Vec2::new(-half_extents.x, half_extents.y),
+        ];
+    
+        // Rotate corners to match the sprite's rotation
+        let rotated_corners: Vec<Vec2> = corners
+            .iter()
+            .map(|&corner| {
+                Vec2::new(
+                    corner.x * angle.cos() - corner.y * angle.sin(),
+                    corner.x * angle.sin() + corner.y * angle.cos(),
+                )
+            })
+            .collect();
+    
+        // Now perform collision checks with the rotated corners against the other collision box
+        // Implement your specific collision detection logic here
+    
+        // Example: Check if any rotated corners are inside the other collision box
+        for corner in &rotated_corners {
+            let world_corner = *corner + transform.translation.truncate();
+            if world_corner.x > other_transform.translation.x - other_collision_box.width / 2.0
+                && world_corner.x < other_transform.translation.x + other_collision_box.width / 2.0
+                && world_corner.y > other_transform.translation.y - other_collision_box.height / 2.0
+                && world_corner.y < other_transform.translation.y + other_collision_box.height / 2.0
+            {
+                return true; // Collision detected
+            }
+        }
+    
+        false
+    }
+    
 
 pub fn spawn_bigfoot(
     mut commands: Commands,
@@ -1568,7 +1635,7 @@ pub fn game_menus(    commands: &mut Commands,
             // Health Text
             parent.spawn(TextBundle {
                 text: Text::from_section(
-                    "Health: 500",
+                    "Health: 100",
                     TextStyle {
                         font: asset_server.load("FiraSans-Bold.ttf"),
                         font_size: 40.0,

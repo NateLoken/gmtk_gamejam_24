@@ -4,12 +4,14 @@ mod player;
 mod systems;
 mod events;
 
+use std::time::Duration;
+
 use bevy::prelude::*;
 use enemy::EnemyPlugin;
 use player::PlayerPlugin;
 use systems::*;
 use events::*;
-use components::{CurrentGameState, GameState, GameTimer, MapGrid, MousePosition, Points, Score};
+use components::{CurrentGameState, GameState, GameTimer, MapGrid, MousePosition, Points, Score, SpawnTimer};
 
 
 //Assets constants
@@ -27,6 +29,7 @@ const PLAYER_RADIUS: f32 = 500.;
 
 // Enemy Constants
 const MAX_ENEMIES: u32 = 1;
+const ENEMY_SPEED: f32 = 150.;
 
 // Texture Resource
 #[derive(Resource)]
@@ -62,6 +65,7 @@ fn main() {
         .insert_resource(CurrentGameState { state: GameState::Menu }) 
         .insert_resource(MapGrid::default()) 
         .insert_resource(GameTimer(0.0))
+        .insert_resource(SpawnTimer::new(Duration::from_secs(1), 0.002)) // Start with 1 second, decrease by 2ms every second
         .init_state::<GameState>()
         //.add_systems(PreStartup, setup_menu)
         .add_systems(Startup, (setup, setup_menu))
@@ -89,7 +93,7 @@ fn main() {
                 update_cooldowns_ui.run_if(in_state(GameState::Running)),
                 update_ui_text.run_if(in_state(GameState::Running)),
                 manage_invulnerability.run_if(in_state(GameState::Running)),
-                flicker_system.run_if(in_state(GameState::Running)),
+                //flicker_system.run_if(in_state(GameState::Running)),
                 check_and_spawn_map.run_if(in_state(GameState::Running)),
                 handle_escape_pressed.run_if(in_state(GameState::Running).or_else(in_state(GameState::Paused))),
                 update_bigfoot.run_if(in_state(GameState::Running)),
