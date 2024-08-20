@@ -26,7 +26,7 @@ const BASE_SPEED: f32 = 250.;
 const PLAYER_RADIUS: f32 = 500.;
 
 // Enemy Constants
-const MAX_ENEMIES: u32 = 1;
+const MAX_ENEMIES: u32 = 10;
 const ENEMY_SPEED: f32 = 150.;
 
 // Resources
