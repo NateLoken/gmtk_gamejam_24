@@ -57,9 +57,6 @@ pub struct Lifetime {
 pub struct Enemy;
 
 
-#[derive(Component)]
-pub struct Boss;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Ability {
     Dash,

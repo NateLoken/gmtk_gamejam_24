@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-use crate::{GameTextures, MouseCoords, BASE_SPEED, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
+use crate::{GameTextures, MouseCoords, BASE_SPEED, SPRITE_SCALE, SPRITE_SIZE};
 use crate::components::{Ability, Collider, Cooldowns, Health, Invulnerability, Lifetime, Line, Player, PointMarker, Points, Velocity}; 
 use bevy::prelude::*;
 
@@ -75,13 +75,14 @@ fn player_keyboard_event_system(
 }
 
 fn player_movement_system(
-    mut query: Query<(&Velocity, &mut Transform), With<Player>>
+    mut query: Query<(&Velocity, &mut Transform), With<Player>>,
+    time: Res<Time>
 ) {
     for (velocity, mut transform) in query.iter_mut() {
        let translation = &mut transform.translation;
 
-       translation.x += velocity.x * TIME_STEP * BASE_SPEED;
-       translation.y += velocity.y * TIME_STEP * BASE_SPEED;
+       translation.x += velocity.x * time.delta_seconds() * BASE_SPEED;
+       translation.y += velocity.y * time.delta_seconds() * BASE_SPEED;
     }
 }
 

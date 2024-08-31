@@ -1,8 +1,7 @@
 use bevy::prelude::*;
 use crate::components::{Cooldowns, Health, Invulnerability, Lifetime, Player, Points};
-use crate::events::Score;
 
-use crate::{EnemyCount, GameTextures, MouseCoords, BOSS_SPRITE, ENEMY_SPRITE, LINE_SPRITE, PLAYER_SPRITE};
+use crate::{EnemySpawnRate, GameTextures, MouseCoords, ENEMY_SPRITE, LINE_SPRITE, PLAYER_SPRITE};
 // Systems Implementation
 
 pub fn camera_follow_player(
@@ -65,9 +64,6 @@ pub fn clean_dead(
    }
 }
 
-pub fn display_score(_score: Res<Score>) {
-    //println!("Enemies killed: {}", score.get_enemies_killed());
-}
 
 // System to update the MousePosition resource whenever the mouse moves
 pub fn update_mouse_position(
@@ -158,11 +154,10 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let game_textures = GameTextures {
         player: asset_server.load(PLAYER_SPRITE),
         enemy: asset_server.load(ENEMY_SPRITE),
-        boss: asset_server.load(BOSS_SPRITE),
         line: asset_server.load(LINE_SPRITE),
     };
 
-    let enemy_count = EnemyCount(0);
+    let enemy_count = EnemySpawnRate(2.0);
 
     let mouse_coords = MouseCoords {
         x: 0.,
@@ -171,7 +166,6 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     commands.insert_resource(game_textures);
     commands.insert_resource(enemy_count);
-    commands.insert_resource(Score::new());
     commands.insert_resource(mouse_coords);
     commands.insert_resource(Points::default());
 }

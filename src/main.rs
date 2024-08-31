@@ -15,18 +15,15 @@ use events::*;
 //Assets constants
 const PLAYER_SPRITE: &str = "blue_box.png";
 const ENEMY_SPRITE: &str = "pink_box.png";
-const BOSS_SPRITE: &str = "red_box.png";
 const LINE_SPRITE: &str = "red_line.png";
 const SPRITE_SIZE: (f32, f32) = (225., 225.);
 const SPRITE_SCALE: f32 = 0.5;
 
 // Game Cosntants
-const TIME_STEP: f32 = 1. / 60.;
 const BASE_SPEED: f32 = 250.;
 const PLAYER_RADIUS: f32 = 500.;
 
 // Enemy Constants
-const MAX_ENEMIES: u32 = 10;
 const ENEMY_SPEED: f32 = 150.;
 
 // Resources
@@ -34,7 +31,6 @@ const ENEMY_SPEED: f32 = 150.;
 struct GameTextures {
     player: Handle<Image>,
     enemy: Handle<Image>,
-    boss: Handle<Image>,
     line: Handle<Image>,
 }
 
@@ -46,7 +42,7 @@ pub struct MouseCoords {
 }
 
 #[derive(Resource)]
-struct EnemyCount(u32);
+struct EnemySpawnRate(f32);
 
 fn main() {
     App::new()
@@ -59,12 +55,11 @@ fn main() {
             FixedUpdate,
             (
                 camera_follow_player,
-                display_score,
                 camera_follow_player,
                 clean_dead,
                 update_mouse_position,
                 update_lifetime,
-                update_cooldowns, // Manage ability cooldowns
+                update_cooldowns,
                 manage_invulnerability,
             ),
         )

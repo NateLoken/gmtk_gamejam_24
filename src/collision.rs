@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use bevy::prelude::*;
-use crate::{components::{Collider, Enemy, Health, Line, Player, PointMarker, Velocity}, CollisionEvent, BASE_SPEED, TIME_STEP};
+use crate::{components::{Collider, Enemy, Health, Invulnerability, Line, Player, PointMarker}, CollisionEvent, ENEMY_SPEED};
 
 pub struct CollisionPlugin;
 
@@ -11,15 +11,15 @@ impl Plugin for CollisionPlugin {
 }
 
 fn detect_collisions(
-    mut query: Query<(Entity, &Transform, &mut Collider, Option<&Player>, Option<&Enemy>, Option<&Line>, Option<&PointMarker>)>,
+    mut query: Query<(Entity, &Transform, &mut Collider, Option<&Player>, Option<&Enemy>, Option<&Line>, Option<&PointMarker>), Without<Invulnerability>>,
     mut events: EventWriter<CollisionEvent>,
 ) {
     let mut collisions: HashMap<Entity, Vec<Entity>> = HashMap::new();
 
-    for (entity_a, transform_a, collider_a, player_a, enemy_a, line_a, point_marker_a) in query.iter() {
+    for (entity_a, transform_a, collider_a, player_a, _, line_a, point_marker_a) in query.iter() {
         let rect_a = Rect::from_center_size(transform_a.translation.truncate(), collider_a.size);
 
-        for (entity_b, transform_b, collider_b, player_b, enemy_b, line_b, point_marker_b) in query.iter() {
+        for (entity_b, transform_b, collider_b, _, enemy_b, _, _) in query.iter() {
             let rect_b = Rect::from_center_size(transform_b.translation.truncate(), collider_b.size);
 
             if entity_b == entity_a {
@@ -57,6 +57,7 @@ fn handle_collisions(
     entity_query: Query<&Collider, Without<Player>>,
     mut player_query: Query<(&mut Collider, &mut Transform, &mut Health), With<Player>>,
     transform_query: Query<&Transform, Without<Player>>,
+    time: Res<Time>,
     mut health: Query<&mut Health, Without<Player>>,
 ) {
     for event in collision_reader.read() {
@@ -76,7 +77,7 @@ fn handle_collisions(
 
                     player_collider.collisions.clear();
 
-                    player_transform.translation += direction_vector * TIME_STEP * BASE_SPEED;
+                    player_transform.translation += direction_vector * time.delta_seconds() * ENEMY_SPEED;
 
                 }
             }
