@@ -1,5 +1,7 @@
-use bevy::{ecs::entity::Entity, prelude::{Component, Resource, Timer, TimerMode, Vec2}};
-use std::collections::HashMap;
+use bevy::{asset::Handle, ecs::entity::Entity, prelude::{Component, Resource, Timer, TimerMode, Vec2}, render::texture::Image, state::state::States, utils::HashSet};
+use std::{collections::HashMap, fmt};
+
+use crate::death_sound;
 
 // Common Components
 #[derive(Component)]
@@ -15,7 +17,7 @@ impl Collider {
             collisions: vec![],
         }
     }
-    
+
 }
 
 #[derive(Component)]
@@ -35,6 +37,8 @@ pub struct Velocity {
     pub x: f32,
     pub y: f32,
 }
+#[derive(Component)]
+pub struct CooldownUi;
 
 
 // Player Components
@@ -43,6 +47,63 @@ pub struct Line;
 
 #[derive(Component)]
 pub struct Player;
+
+#[derive(Component)]
+pub struct wallpaper;
+
+//#[derive(Component)]
+//pub struct Player {
+//    pub health: i32,
+//    pub x: f32,
+//    pub y: f32,
+//}
+
+//impl Player {
+//    pub fn new(health: i32) -> Self {
+//        Player { health, x: 0., y: 0. }
+//    }
+//
+//    pub fn heal(
+//        &mut self,
+//        amount: i32,
+//    ){
+//        if self.health < 500 {
+//            self.health +=amount;
+//        }
+//    }
+//
+//    pub fn take_damage(
+//        &mut self,
+//        amount: i32,
+//        entity: Entity,
+//        commands: &mut Commands,
+//        invulnerability_option: Option<&mut Invulnerability>,
+//        state: &mut ResMut<NextState<GameState>>,
+//        asset_server: & Res<AssetServer>,
+//    ) {
+//        if let Some(invulnerability) = invulnerability_option {
+//            if invulnerability.is_active() {
+//                //println!("Player is invulnerable, no damage taken.");
+//                return;
+//            } 
+//        } else {
+//            // If no invulnerability component, add it with the desired duration
+//            commands.entity(entity).insert(Invulnerability::new(1.0));
+//            // println!("Invulnerability added with duration: {} seconds.", invulnerability_duration);
+//        }
+//
+//        // Apply damage to the player
+//        self.health -= amount;
+//        println!("Player took {} damage, remaining health: {}", amount, self.health);
+//        >>>>>>> main
+//
+//            if self.health <= 0 {
+//                death_sound(asset_server, commands);
+//                state.set(GameState::GameOver);
+//            }
+//        commands.entity(entity).insert(Invulnerability::new(1.0));
+//    }
+//}
 
 #[derive(Component)]
 pub struct PointMarker;
@@ -56,15 +117,23 @@ pub struct Lifetime {
 #[derive(Component)]
 pub struct Enemy;
 
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
 pub enum Ability {
     Dash,
     Attack,
     Ranged,
     Aoe,
 }
-
+impl fmt::Display for Ability {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Ability::Attack => write!(f, "Attack"),
+            Ability::Ranged => write!(f, "Ranged"),
+            Ability::Dash => write!(f, "Dash"),
+            Ability::Aoe => write!(f, "Bladestorm"),
+        }
+    }
+}
 
 #[derive(Component)]
 pub struct Cooldowns {
@@ -94,15 +163,153 @@ impl Cooldowns {
             timer.reset();
         }
     }
+
+    pub fn get_cooldown(&self, ability: Ability) -> Option<f32> {
+        if let Some(timer) = self.cooldowns.get(&ability) {
+            let remaining_time = timer.duration().as_secs_f32() - timer.elapsed_secs();
+            Some(remaining_time.max(0.0)) // Ensure it never goes negative
+        } else {
+            None
+        }
+    }
+
 }
 
+#[derive(Component)]
+pub struct Map;
+
+#[derive(Default, Resource)]
+pub struct MapGrid {
+    pub positions: HashSet<(i32, i32)>, // A set to track the positions of maps on the grid
+}
+
+#[derive(Component)]
+pub struct Bigfoot {
+    pub x: f32,
+    pub y: f32,
+    pub state: BigfootState,
+    pub timer: Timer,
+    pub health: i32,
+    pub airTexture: Handle<Image>,
+    pub groundTexture: Handle<Image>,
+}
+
+impl Bigfoot {
+    pub fn new(x: f32, y: f32) -> Self {
+        Bigfoot {
+            timer: Timer::from_seconds(2.5, TimerMode::Once),
+            state: BigfootState::Invulnerable,
+            x,
+            y,
+            health: 5,
+            airTexture: todo!(),
+            groundTexture: todo!(), // Initial health value
+        }
+    }
+
+    pub fn take_damage(&mut self, amount: i32) {
+        self.health -= amount;
+        if self.health < 0 {
+            self.health = 0;
+        }
+    }
+
+    pub fn is_dead(&self) -> bool {
+        self.health <= 0
+    }
+}
+
+#[derive(PartialEq)]
+pub enum BigfootState {
+    Invulnerable,
+    Solid,
+    Cleanup,
+}
+
+#[derive(Component)]
+pub struct GameOverUI;
+
+
+#[derive(Component)]
+pub struct Resettable;
+
+#[derive(Resource)]
+pub struct Score {
+    pub enemies_killed: u32,
+}
+
+#[derive(Resource)]
+pub struct GameTimer(pub f32);
+
+#[derive(Component)]
+pub struct GameTimerText;
+
+
+impl Score {
+    pub fn new() -> Self {
+        Score {
+            enemies_killed: 0,
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.enemies_killed = 0;
+    }
+
+    pub fn increment(&mut self) {
+        self.enemies_killed += 1;
+    }
+
+    pub fn get_enemies_killed(&self) -> u32 {
+        self.enemies_killed
+    }
+}
+#[derive(Clone, Copy, Default, Eq, PartialEq, Debug, Hash, States)]
+pub enum GameState {
+    #[default]
+    Running,
+    Menu,
+    Paused,
+    Reset,
+    GameOver
+}
+
+#[derive(Resource)]
+pub struct CurrentGameState {
+    pub(crate) state: GameState,
+}
+#[derive(Component)]
+pub struct PauseMenu;
+
+#[derive(Component, PartialEq)]
+pub struct StartButton;
+
+#[derive(Component)]
+pub struct QuitButton;
+
+#[derive(Component)]
+pub struct MenuUI;
+
+#[derive(Component)]
+pub struct MovementSpeed(pub f32);
+
+#[derive(Default, Resource)]
+pub struct MousePosition {
+    pub x: f32,
+    pub y: f32,
+}
 
 #[derive(Default, Resource)]
 pub struct Points(pub Vec<Vec2>);
+
+#[derive(Component)]
+pub struct HealthText;
+
+#[derive(Component)]
+pub struct ScoreText;
 
 
 #[derive(Component)]
 pub struct Invulnerability {
     pub timer: Timer,
 }
-

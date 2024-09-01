@@ -1,0 +1,132 @@
+pub fn check_collisions(
+    mut player_query: Query<(Entity, &mut Player, &CollisionBox, &Transform, Option<Mut< Invulnerability>>)>,    
+    other_entities_query: Query<(Entity, &Transform, &CollisionBox), (Without<Player>, Without<Line>)>,
+    mut collision_events: EventWriter<CollisionEvent>,
+    points_query: Query<(Entity, &Transform), With<PointMarker>>,
+    mut score: ResMut<Score>,
+    mut commands: Commands,
+    mut points: ResMut<Points>,  
+    mut enemy_counter: ResMut<EnemyCount>,
+    mut despawned_entities: Local<HashSet<Entity>>,  // Track despawned entities
+    line_query: Query<(Entity, &Transform, &CollisionBox), With<Line>>,
+    mut exit: EventWriter<AppExit>, // Add the AppExit event writer
+    mut cooldowns_query: Query<&mut Cooldowns>,
+    bigfoot_query: Query<(Entity, &Bigfoot)>,   // Query all Bigfoot entities
+) {
+    
+    let bigfoot_entities: HashSet<Entity> = bigfoot_query
+        .iter()
+        .filter_map(|(entity, bigfoot)| {
+            if bigfoot.state == BigfootState::Invulnerable {
+                // Bigfoot is invulnerable, skip it
+                None
+            } else {
+                Some(entity)
+            }
+        })
+      .collect();
+    for (enemy_entity, transform, bounding_box) in other_entities_query.iter() {
+        if bigfoot_entities.contains(&enemy_entity) {
+            // Bigfoot is in the solid state, don't despawn it
+            continue;
+        }
+
+        let enemy_min_x = transform.translation.x - bounding_box.width / 2.0;
+        let enemy_max_x = transform.translation.x + bounding_box.width / 2.0;
+        let enemy_min_y = transform.translation.y - bounding_box.height / 2.0;
+        let enemy_max_y = transform.translation.y + bounding_box.height / 2.0;
+        for (entity, mut player, player_box, player_transform, mut invulnerability_option) in player_query.iter_mut() {
+        for (point_entity, point_transform) in points_query.iter() {
+            let point = Vec2::new(point_transform.translation.x, point_transform.translation.y);
+
+            if point.x > enemy_min_x
+                && point.x < enemy_max_x
+                && point.y > enemy_min_y
+                && point.y < enemy_max_y
+            {
+                // Call the kill_enemy function
+                enemy_killed(&mut score,&mut player, &mut cooldowns_query);
+                
+
+                // Despawn the enemy
+                commands.entity(enemy_entity).despawn();
+                enemy_counter.0 -= 1;
+                break;
+            }
+        }
+    }}
+    for (entity, mut player, player_box, player_transform, mut invulnerability_option) in player_query.iter_mut() {
+
+    for (attack_entity, attack_transform, attack_box) in line_query.iter() {
+        let attack_min_x = attack_transform.translation.x - attack_box.width / 2.0;
+        let attack_max_x = attack_transform.translation.x + attack_box.width / 2.0;
+        let attack_min_y = attack_transform.translation.y - attack_box.height / 2.0;
+        let attack_max_y = attack_transform.translation.y + attack_box.height / 2.0;
+
+        for (enemy_entity, enemy_transform, enemy_box) in other_entities_query.iter() {
+            let enemy_min_x = enemy_transform.translation.x - enemy_box.width / 2.0;
+            let enemy_max_x = enemy_transform.translation.x + enemy_box.width / 2.0;
+            let enemy_min_y = enemy_transform.translation.y - enemy_box.height / 2.0;
+            let enemy_max_y = enemy_transform.translation.y + enemy_box.height / 2.0;
+
+            if attack_max_x > enemy_min_x
+                && attack_min_x < enemy_max_x
+                && attack_max_y > enemy_min_y
+                && attack_min_y < enemy_max_y
+            {
+                // Call the kill_enemy function
+                enemy_killed(&mut score,&mut player, &mut cooldowns_query);
+
+                // Despawn the enemy
+                commands.entity(enemy_entity).despawn();
+
+                // Despawn the line after it collides with an enemy
+                //commands.entity(line_entity).despawn();
+                break;
+            }
+        }}
+    }
+
+    
+    for (entity, mut player, player_box, player_transform, mut invulnerability_option) in player_query.iter_mut() {
+        let player_min_x = player_transform.translation.x - player_box.width / 2.0;
+        let player_max_x = player_transform.translation.x + player_box.width / 2.0;
+        let player_min_y = player_transform.translation.y - player_box.height / 2.0;
+        let player_max_y = player_transform.translation.y + player_box.height / 2.0;
+
+        if bigfoot_query.get(entity).is_ok() {
+            println!("bigfoot");
+            continue; // Skip collision checks for Bigfoot
+        }
+        
+        if let Some(ref mut invulnerability) = invulnerability_option {
+            if invulnerability.is_active() {
+                continue; // Skip damage application if invulnerable
+            }
+        }
+
+
+        for (enemy_entity, enemy_transform, enemy_box) in other_entities_query.iter() {
+            let enemy_min_x = enemy_transform.translation.x - enemy_box.width / 2.0;
+            let enemy_max_x = enemy_transform.translation.x + enemy_box.width / 2.0;
+            let enemy_min_y = enemy_transform.translation.y - enemy_box.height / 2.0;
+            let enemy_max_y = enemy_transform.translation.y + enemy_box.height / 2.0;
+
+            if player_max_x > enemy_min_x
+                && player_min_x < enemy_max_x
+                && player_max_y > enemy_min_y
+                && player_min_y < enemy_max_y
+            {
+
+            if player_max_x > enemy_min_x
+                && player_min_x < enemy_max_x
+                && player_max_y > enemy_min_y
+                && player_min_y < enemy_max_y
+            {
+                // Handle collision, but only if player is not invulnerable
+                player.take_damage(100, invulnerability_option.as_deref_mut());
+            }
+        }
+    }
+}
+}

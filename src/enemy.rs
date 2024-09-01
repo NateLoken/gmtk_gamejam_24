@@ -3,13 +3,13 @@ use std::{f32::consts::PI, time::Duration};
 use bevy::{prelude::*, time::common_conditions::on_timer};
 use rand::Rng;
 
-use crate::{components::{Collider, Enemy, Health, Player, Velocity}, EnemySpawnRate, GameTextures, ENEMY_SPEED, PLAYER_RADIUS, SPRITE_SCALE, SPRITE_SIZE };
+use crate::{components::{Collider, Enemy, GameState, Health, Player, Velocity}, EnemySpawnRate, GameTextures, ENEMY_SPEED, PLAYER_RADIUS, SPRITE_SCALE, SPRITE_SIZE};
 pub struct EnemyPlugin;
 
 impl Plugin for EnemyPlugin {
    fn build(&self, app: &mut App) {
-       app.add_systems(Update, enemy_spawn_system.run_if(on_timer(Duration::from_secs(1))))
-           .add_systems(FixedUpdate, (player_tracking_system, enemy_movement_system));
+       app.add_systems(Update, enemy_spawn_system.run_if(on_timer(Duration::from_secs(1))).run_if(in_state(GameState::Running)))
+           .add_systems(FixedUpdate, (player_tracking_system, enemy_movement_system).run_if(in_state(GameState::Running)));
    } 
 }
 
@@ -33,7 +33,7 @@ fn enemy_spawn_system(
                     texture: game_textures.enemy.clone(),
                     transform: Transform {
                         translation: Vec3::new(x, y, 10.),
-                        scale: Vec3::new(SPRITE_SCALE, SPRITE_SCALE, 0.),
+                       scale: Vec3::new(SPRITE_SCALE/8.0, SPRITE_SCALE/8.0, 0.),
                         ..Default::default()
                     },
                     ..Default::default()
@@ -49,7 +49,7 @@ fn enemy_spawn_system(
                 },
         ));
         enemy_spawn_rate.0 -= 0.025;
-    }
+   }
 }
 
 
@@ -62,7 +62,7 @@ fn player_tracking_system(
             let direction_vector = (player_transform.translation - enemy_transform.translation).normalize();
             velocity.x = direction_vector.x;
             velocity.y = direction_vector.y;
-        }
+       }
     }
 }
 

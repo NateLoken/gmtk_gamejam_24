@@ -82,6 +82,7 @@ fn handle_collisions(
                 }
             }
             CollisionEvent::Damage(entity) => {
+                info!("Damage collision detected");
                 if let Ok(entity_collider) = entity_query.get(*entity) {
                     for collisions in entity_collider.collisions.iter() {
                         if let Ok(mut other_entity_health) = health.get_mut(*collisions) {
