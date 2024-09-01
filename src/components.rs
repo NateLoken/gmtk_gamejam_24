@@ -1,10 +1,36 @@
-//use bevy::prelude::{Component, Transform};
-use bevy::{prelude::*, utils::{hashbrown::HashSet}};
+use bevy::{asset::Handle, ecs::entity::Entity, prelude::{Component, Resource, Timer, TimerMode, Vec2}, render::texture::Image, state::state::States, utils::HashSet};
 use std::{collections::HashMap, fmt, time::Duration};
-
 use crate::death_sound;
 
 // Common Components
+#[derive(Component)]
+pub struct Collider{
+    pub size: Vec2,
+    pub collisions: Vec<Entity>,
+}
+
+impl Collider {
+    pub fn new(size: Vec2) -> Self {
+        Self {
+            size,
+            collisions: vec![],
+        }
+    }
+
+}
+
+#[derive(Component)]
+pub struct Health {
+    pub hp: i32
+}
+
+impl Health {
+    pub fn take_damage(&mut self, amount: i32) {
+        self.hp -= amount;
+        println!("Damage Taken: {}", amount);
+    }
+}
+
 #[derive(Component)]
 pub struct Velocity {
     pub x: f32,
@@ -13,12 +39,13 @@ pub struct Velocity {
 #[derive(Component)]
 pub struct CooldownUi;
 
+
 // Player Components
 #[derive(Component)]
 pub struct Line;
 
 #[derive(Component)]
-pub struct wallpaper;
+pub struct Player;
 
 #[derive(Resource)]
 pub struct SpawnTimer {
@@ -44,59 +71,62 @@ impl SpawnTimer {
 }
 
 #[derive(Component)]
-pub struct Player {
-    pub health: i32,
-    pub x: f32,
-    pub y: f32,
-}
+pub struct wallpaper;
 
-impl Player {
-    pub fn new(health: i32) -> Self {
-        Player { health, x: 0., y: 0. }
-    }
+//#[derive(Component)]
+//pub struct Player {
+//    pub health: i32,
+//    pub x: f32,
+//    pub y: f32,
+//}
 
-    pub fn heal(
-        &mut self,
-        amount: i32,
-    ){
-        if self.health < 500 {
-            self.health +=amount;
-        }
-    }
-    
+//impl Player {
+//    pub fn new(health: i32) -> Self {
+//        Player { health, x: 0., y: 0. }
+//    }
+//
+//    pub fn heal(
+//        &mut self,
+//        amount: i32,
+//    ){
+//        if self.health < 500 {
+//            self.health +=amount;
+//        }
+//    }
+//
+//    pub fn take_damage(
+//        &mut self,
+//        amount: i32,
+//        entity: Entity,
+//        commands: &mut Commands,
+//        invulnerability_option: Option<&mut Invulnerability>,
+//        state: &mut ResMut<NextState<GameState>>,
+//        asset_server: & Res<AssetServer>,
+//    ) {
+//        if let Some(invulnerability) = invulnerability_option {
+//            if invulnerability.is_active() {
+//                //println!("Player is invulnerable, no damage taken.");
+//                return;
+//            } 
+//        } else {
+//            // If no invulnerability component, add it with the desired duration
+//            commands.entity(entity).insert(Invulnerability::new(1.0));
+//            // println!("Invulnerability added with duration: {} seconds.", invulnerability_duration);
+//        }
+//
+//        // Apply damage to the player
+//        self.health -= amount;
+//        println!("Player took {} damage, remaining health: {}", amount, self.health);
+//        >>>>>>> main
+//
+//            if self.health <= 0 {
+//                death_sound(asset_server, commands);
+//                state.set(GameState::GameOver);
+//            }
+//        commands.entity(entity).insert(Invulnerability::new(1.0));
+//    }
+//}
 
-        pub fn take_damage(
-        &mut self,
-        amount: i32,
-        entity: Entity,
-        commands: &mut Commands,
-        invulnerability_option: Option<&mut Invulnerability>,
-        state: &mut ResMut<NextState<GameState>>,
-        asset_server: & Res<AssetServer>,
-    ) {
-        if let Some(invulnerability) = invulnerability_option {
-            if invulnerability.is_active() {
-                //println!("Player is invulnerable, no damage taken.");
-                return;
-            } 
-        } else {
-            // If no invulnerability component, add it with the desired duration
-            commands.entity(entity).insert(Invulnerability::new(1.0));
-           // println!("Invulnerability added with duration: {} seconds.", invulnerability_duration);
-        }
-
-        // Apply damage to the player
-        self.health -= amount;
-        println!("Player took {} damage, remaining health: {}", amount, self.health);
-
-        if self.health <= 0 {
-            death_sound(asset_server, commands);
-            state.set(GameState::GameOver);
-        }
-        commands.entity(entity).insert(Invulnerability::new(1.0));
-    }
-    }
-   
 #[derive(Component)]
 pub struct PointMarker;
 
@@ -300,11 +330,6 @@ pub struct MenuUI;
 #[derive(Component)]
 pub struct MovementSpeed(pub f32);
 
-#[derive(Component)]
-pub struct DirectionComponent {
-    pub direction: Direction,
-}
-
 #[derive(Default, Resource)]
 pub struct MousePosition {
     pub x: f32,
@@ -322,57 +347,6 @@ pub struct ScoreText;
 
 
 #[derive(Component)]
-pub struct Tag {
-    pub name: String,
-}
-
-#[derive(Component)]
 pub struct Invulnerability {
     pub timer: Timer,
-}
-
-impl Invulnerability {
-    pub fn new(duration: f32) -> Self {
-        Invulnerability {
-            timer: Timer::from_seconds(duration, TimerMode::Once),
-        }
-    }
-
-    pub fn is_active(&self) -> bool {
-        !self.timer.finished()
-    }
-
-    pub fn reset(&mut self) {
-        self.timer.reset();
-    }
-}
-
-
-#[derive(Component)]
-pub struct CollisionBox {
-    pub width: f32,
-    pub height: f32,
-}
-
-impl CollisionBox {
-    pub fn new(width: f32, height: f32) -> Self {
-        CollisionBox { width, height }
-    }
-
-    pub fn intersects(&self, transform: &Transform, other: &CollisionBox, other_transform: &Transform) -> bool {
-        let self_min_x = transform.translation.x - self.width / 2.0;
-        let self_max_x = transform.translation.x + self.width / 2.0;
-        let self_min_y = transform.translation.y - self.height / 2.0;
-        let self_max_y = transform.translation.y + self.height / 2.0;
-
-        let other_min_x = other_transform.translation.x - other.width / 2.0;
-        let other_max_x = other_transform.translation.x + other.width / 2.0;
-        let other_min_y = other_transform.translation.y - other.height / 2.0;
-        let other_max_y = other_transform.translation.y + other.height / 2.0;
-
-        self_min_x < other_max_x &&
-        self_max_x > other_min_x &&
-        self_min_y < other_max_y &&
-        self_max_y > other_min_y
-    }
 }

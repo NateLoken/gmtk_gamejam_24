@@ -1,9 +1,10 @@
-use std::{f32::consts::PI, time::Duration};
+use std::f32::consts::PI;
 
-use bevy::{prelude::*, time::common_conditions::on_timer};
+use bevy::prelude::*;
 use rand::Rng;
 
-use crate::{components::{CollisionBox, Enemy, GameState, Player, Resettable, SpawnTimer, Velocity}, EnemyCount, GameTextures, BASE_SPEED, ENEMY_SPEED, PLAYER_RADIUS, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
+use crate::{components::{Collider, Enemy, GameState, Health, Player, Velocity}, EnemySpawnRate, GameTextures, ENEMY_SPEED, PLAYER_RADIUS, SPRITE_SCALE, SPRITE_SIZE};
+
 pub struct EnemyPlugin;
 
 impl Plugin for EnemyPlugin {
@@ -16,12 +17,9 @@ impl Plugin for EnemyPlugin {
 fn enemy_spawn_system(
     mut commands: Commands,
     game_textures: Res<GameTextures>,
-    mut enemy_count: ResMut<EnemyCount>,
-    player_query: Query<&Transform, With<Player>>,
-    mut spawn_timer: ResMut<SpawnTimer>,
-    time: Res<Time>,
+    mut enemy_spawn_rate: ResMut<EnemySpawnRate>,
+    player_query: Query<&Transform, With<Player>>
 ) {
-    spawn_timer.update(time.delta());
     if let Ok(player_transform) = player_query.get_single() {
         let player_position = player_transform.translation;
 
@@ -31,8 +29,7 @@ fn enemy_spawn_system(
         let x = player_position.x + PLAYER_RADIUS * angle.cos();
         let y = player_position.y + PLAYER_RADIUS * angle.sin();
 
-        if spawn_timer.timer.finished() {
-            commands.spawn((
+        commands.spawn((
                 SpriteBundle {
                     texture: game_textures.enemy.clone(),
                     transform: Transform {
@@ -42,17 +39,20 @@ fn enemy_spawn_system(
                     },
                     ..Default::default()
                 },
-        ))
-            .insert(CollisionBox::new(SPRITE_SIZE.0 * SPRITE_SCALE/8.0, SPRITE_SIZE.1 * SPRITE_SCALE/8.0))
-            .insert(Enemy)
-            .insert(Velocity {x: 0., y: 0.})
-            .insert(Resettable);
-        enemy_count.0 += 1;
-        }
-
-       
+                Health {
+                    hp: 1,
+                },
+                Collider::new(Vec2::splat(SPRITE_SIZE.0 * SPRITE_SCALE)),
+                Enemy,
+                Velocity {
+                    x: 0.,
+                    y: 0.,
+                },
+        ));
+        enemy_spawn_rate.0 -= 0.025;
     }
 }
+
 
 fn player_tracking_system(
     player_query: Query<&Transform, With<Player>>,
@@ -64,16 +64,18 @@ fn player_tracking_system(
             velocity.x = direction_vector.x;
             velocity.y = direction_vector.y;
         }
+
     }
 }
 
 fn enemy_movement_system(
-    mut query: Query<(&Velocity, &mut Transform), With<Enemy>>
+    mut query: Query<(&Velocity, &mut Transform), With<Enemy>>,
+    time: Res<Time>,
 ) {
     for (velocity, mut transform) in query.iter_mut() {
-       let translation = &mut transform.translation;
+        let translation = &mut transform.translation;
 
-       translation.x += velocity.x * TIME_STEP * ENEMY_SPEED;
-       translation.y += velocity.y * TIME_STEP * ENEMY_SPEED;
+        translation.x += velocity.x * time.delta_seconds() * ENEMY_SPEED;
+        translation.y += velocity.y * time.delta_seconds() * ENEMY_SPEED;
     }
 }

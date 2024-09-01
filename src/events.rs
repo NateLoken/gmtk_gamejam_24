@@ -1,5 +1,8 @@
 use bevy::prelude::*;
 
 #[derive(Event)]
-pub struct CollisionEvent(pub Entity); // Event carrying the entity to delete
+pub enum CollisionEvent{
+    Collision,
+    Damage(Entity),
+} // Event carrying the entity to delete
 

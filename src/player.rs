@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
-use crate::{aoe_sound, dash_sound, play_empty_swing, ranged_sound, spawn_bigfoot, GameTextures, MouseCoords, BASE_SPEED, SPRITE_SCALE, SPRITE_SIZE, TIME_STEP };
-use crate::components::{Ability, CollisionBox, Cooldowns, GameState, Invulnerability, Lifetime, Line, Player, PointMarker, Points, Resettable, Velocity}; 
+use crate::{aoe_sound, dash_sound, play_empty_swing, ranged_sound, spawn_bigfoot, GameTextures, MouseCoords, BASE_SPEED, SPRITE_SCALE, SPRITE_SIZE};
+use crate::components::{Ability, Collider, Cooldowns, GameState, Health, Invulnerability, Lifetime, Line, Player, PointMarker, Points, Velocity}; 
 use bevy::prelude::*;
 
 pub struct PlayerPlugin;
@@ -30,12 +30,17 @@ pub fn player_spawn_system(
                 },
                 ..Default::default()
             },
-    ))
-        .insert(CollisionBox::new(SPRITE_SIZE.0 * SPRITE_SCALE, SPRITE_SIZE.1 * SPRITE_SCALE))
-        .insert(Player { health: 500, x:0.0, y:0.0,})
-        .insert(Velocity { x: 0., y: 0. })
-        .insert(Resettable)
-        .insert(Cooldowns::new());  // Initialize cooldowns for abilities)
+            Health {
+                hp: 500
+            },
+            Collider::new(Vec2::splat(SPRITE_SIZE.0 * SPRITE_SCALE)),
+            Cooldowns::new(),
+            Player,
+            Velocity {
+                x: 0.,
+                y: 0.,
+            },
+    ));
 }
 
 fn player_keyboard_event_system(
@@ -70,13 +75,14 @@ fn player_keyboard_event_system(
 }
 
 fn player_movement_system(
-    mut query: Query<(&Velocity, &mut Transform), With<Player>>
+    mut query: Query<(&Velocity, &mut Transform), With<Player>>,
+    time: Res<Time>
 ) {
     for (velocity, mut transform) in query.iter_mut() {
-       let translation = &mut transform.translation;
+        let translation = &mut transform.translation;
 
-       translation.x += velocity.x * TIME_STEP * BASE_SPEED;
-       translation.y += velocity.y * TIME_STEP * BASE_SPEED;
+        translation.x += velocity.x * time.delta_seconds() * BASE_SPEED;
+        translation.y += velocity.y * time.delta_seconds() * BASE_SPEED;
     }
 }
 
@@ -114,7 +120,7 @@ fn ability_system(
                 dash_sound(&mut asset_server, &mut commands);
             } else {
                 println!("Dash is on cooldown!");
-                
+
             }
         } else if kb.just_pressed(KeyCode::KeyQ) {
             if cooldowns.is_ready(Ability::Attack) {
@@ -148,16 +154,18 @@ fn ability_system(
 fn ranged_attack(
     commands: &mut Commands,
     player_query: Query<(Entity, &mut Transform), With<Player>>,
-     mouse_coords: Res<MouseCoords>,
-     game_textures: Res<GameTextures>,
+    mouse_coords: Res<MouseCoords>,
+    game_textures: Res<GameTextures>,
+
 ) {
     if let Ok((entity, transform)) = player_query.get_single() {
         let player_position = Vec2::new(transform.translation.x, transform.translation.y);
         let mouse_position = Vec2::new(mouse_coords.x, mouse_coords.y);
 
+
         // Calculate the direction from the player to the mouse
         let direction = (mouse_position - player_position).normalize();
-        
+
         // Set the desired line length
         let line_length = 1100.0;
 
@@ -170,24 +178,23 @@ fn ranged_attack(
         // Calculate the angle for proper rotation
         let angle = direction.y.atan2(direction.x);
 
-        // Spawn the sprite representing the ranged attack
-        commands.spawn(
-            SpriteBundle {
-                texture: game_textures.dash.clone(),
-                transform: Transform {
-                    translation: Vec3::new(midpoint.x, midpoint.y, 1.0),
-                    rotation: Quat::from_rotation_z(angle),
-                    scale: Vec3::new(line_length, 50.0, 1.0), // Adjust scale according to the line's length
+        commands.spawn((
+                SpriteBundle {
+                    texture: game_textures.line.clone(),
+                    transform: Transform {
+                        translation: Vec3::new(midpoint.x, midpoint.y, 1.),
+                        rotation: Quat::from_rotation_z(angle),
+                        scale: Vec3::new(1100.0, SPRITE_SCALE, 0.),
+                        ..Default::default()
+                    },
                     ..Default::default()
                 },
-                ..Default::default()
-            }
-        )
-        .insert(Line)
-        .insert(CollisionBox::new(line_length, 50.0)) // Ensure CollisionBox matches the line length
-        .insert(Lifetime {
-            timer: Timer::from_seconds(0.05, TimerMode::Once), // Adjust lifetime to allow sufficient time for collisions
-        });
+                Collider::new(Vec2::new(line_length, SPRITE_SIZE.0)),
+                Line,
+                Lifetime {
+                    timer: Timer::from_seconds(0.1, TimerMode::Once),
+                },
+        ));
     }
 }
 
@@ -207,22 +214,23 @@ fn dash_attack(
 
         let angle = direction.y.atan2(direction.x);
 
-        commands.spawn(SpriteBundle {
-            texture: game_textures.dash.clone(),
-            transform: Transform {
-                translation: Vec3::new(midpoint.x, midpoint.y, 1.),
-                rotation: Quat::from_rotation_z(angle),
-                scale: Vec3::new(length, SPRITE_SCALE, 0.),
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .insert(Line)
-        .insert(CollisionBox::new(length, SPRITE_SIZE.0))
-        .insert(Lifetime {
-            timer: Timer::from_seconds(0.005, TimerMode::Once)
-        });
-
+        commands.spawn((
+                SpriteBundle {
+                    texture: game_textures.line.clone(),
+                    transform: Transform {
+                        translation: Vec3::new(midpoint.x, midpoint.y, 0.),
+                        rotation: Quat::from_rotation_z(angle),
+                        scale: Vec3::new(length, SPRITE_SCALE, 0.),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                Collider::new(Vec2::new(length, SPRITE_SIZE.0)),
+                Line,
+                Lifetime {
+                    timer: Timer::from_seconds(0.1, TimerMode::Once),
+                },
+        ));
         commands.entity(player_entity).insert(Invulnerability {
             timer: Timer::from_seconds(1.0, TimerMode::Once)
         });
@@ -266,20 +274,22 @@ fn melee_attack(
 
                 points.0.push(arc_point);
 
-                commands.spawn(
-                    SpriteBundle {
-                        texture: game_textures.dash.clone(),
-                        transform: Transform {
-                            translation: Vec3::new(arc_point.x, arc_point.y, 1.),
-                            scale: Vec3::new(5., 5., 0.),
+                commands.spawn((
+                        SpriteBundle {
+                            texture: game_textures.line.clone(),
+                            transform: Transform {
+                                translation: Vec3::new(arc_point.x, arc_point.y, 0.),
+                                scale: Vec3::new(5., 5., 0.),
+                                ..Default::default()
+                            },
                             ..Default::default()
                         },
-                        ..Default::default()
-                    })
-                    .insert(PointMarker)
-                    .insert(Lifetime {
-                        timer: Timer::from_seconds(0.005, TimerMode::Once),
-                    });
+                        Collider::new(Vec2::new(5., 5.)),
+                        PointMarker,
+                        Lifetime {
+                            timer: Timer::from_seconds(0.1, TimerMode::Once),
+                        },
+                ));
             }
         }
     }
@@ -309,24 +319,26 @@ fn aoe_attack(
                 let circle_point = Vec2::new(
                     player_position.x + radius as f32 * angle.cos(), 
                     player_position.y + radius as f32 * angle.sin(),
-                    );
+                );
 
                 points.0.push(circle_point);
 
-                commands.spawn(
-                    SpriteBundle {
-                        texture: game_textures.dash.clone(),
-                        transform: Transform {
-                            translation: Vec3::new(circle_point.x, circle_point.y, 1.),
-                            scale: Vec3::new(5., 5., 0.),
+                commands.spawn((
+                        SpriteBundle {
+                            texture: game_textures.line.clone(),
+                            transform: Transform {
+                                translation: Vec3::new(circle_point.x, circle_point.y, 0.),
+                                scale: Vec3::new(5., 5., 0.),
+                                ..Default::default()
+                            },
                             ..Default::default()
                         },
-                        ..Default::default()
-                    })
-                    .insert(PointMarker)
-                    .insert(Lifetime {
-                        timer: Timer::from_seconds(0.005, TimerMode::Once),
-                    });
+                        Collider::new(Vec2::new(5., 5.)),
+                        PointMarker,
+                        Lifetime {
+                            timer: Timer::from_seconds(0.1, TimerMode::Once),
+                        },
+                ));
             }
         }
     }

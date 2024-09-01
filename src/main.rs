@@ -1,18 +1,17 @@
 mod components;
+mod collision;
 mod enemy;
 mod player;
 mod systems;
 mod events;
 
-use std::time::Duration;
-
 use bevy::prelude::*;
+use collision::CollisionPlugin;
 use enemy::EnemyPlugin;
 use player::PlayerPlugin;
-use systems::*;
 use events::*;
-use components::{CurrentGameState, GameState, GameTimer, MapGrid, MousePosition, Points, Score, SpawnTimer};
-
+use components::{CurrentGameState, GameState, GameTimer, MapGrid, MousePosition, Points, Score};
+use systems::*;
 
 //Assets constants
 const PLAYER_SPRITE: &str = "default_guy.png";
@@ -23,20 +22,18 @@ const SPRITE_SIZE: (f32, f32) = (225., 225.);
 const SPRITE_SCALE: f32 = 0.5;
 
 // Game Cosntants
-const TIME_STEP: f32 = 1. / 60.;
-const BASE_SPEED: f32 = 100.;
+const BASE_SPEED: f32 = 250.;
 const PLAYER_RADIUS: f32 = 500.;
 
 // Enemy Constants
-const MAX_ENEMIES: u32 = 1;
 const ENEMY_SPEED: f32 = 150.;
 
-// Texture Resource
+// Resources
 #[derive(Resource)]
 struct GameTextures {
     player: Handle<Image>,
     enemy: Handle<Image>,
-    dash: Handle<Image>,
+    line: Handle<Image>,
     map: Handle<Image>
 }
 
@@ -48,15 +45,12 @@ pub struct MouseCoords {
 }
 
 #[derive(Resource)]
-struct EnemyCount(u32);
+struct EnemySpawnRate(f32);
 
 fn main() {
     App::new()
-        // .insert_resource(WindowDescriptor {
-        //     title: "Game".to_string(),
-        //     ..Default::default()
-        // })
         .add_plugins(DefaultPlugins)
+        .add_plugins(CollisionPlugin)
         .add_plugins(PlayerPlugin)
         .add_plugins(EnemyPlugin)
         .insert_resource(Score::new())
@@ -65,27 +59,23 @@ fn main() {
         .insert_resource(CurrentGameState { state: GameState::Menu }) 
         .insert_resource(MapGrid::default()) 
         .insert_resource(GameTimer(0.0))
-        .insert_resource(SpawnTimer::new(Duration::from_secs(1), 0.002)) // Start with 1 second, decrease by 2ms every second
         .init_state::<GameState>()
-        //.add_systems(PreStartup, setup_menu)
         .add_systems(Startup, (setup, setup_menu))
         .add_systems(OnExit(GameState::Menu), (kill_wallpaper, despawn_menu, spawn_menu, setup_pause_menu))
+
         .add_systems(OnEnter(GameState::Menu),(reset_game, kill_game_ui, despawn_menu, setup_menu, reset_game))
         .add_systems(OnEnter(GameState::Reset),(reset_game))
         .add_systems(OnExit(GameState::Reset),(kill_wallpaper, kill_game_over_ui, despawn_menu, spawn_menu, setup_pause_menu))
         .add_systems(OnEnter(GameState::GameOver), setup_game_over_screen)
-        //.add_plugin(QuickMenuPlugin::<PauseMenu>::new()) // Add the QuickMenu plugin
         .add_systems(
             FixedUpdate,
             (
-                //menu_action_system.run_if(in_state(GameState::Menu)),
-                //quit_action_system .run_if(in_state(GameState::Menu)),
+                clean_dead,
                 menu_action_system,
                 quit_action_system,
                 restart_action_system,
                 check_won_game,
                 update_timer.run_if(in_state(GameState::Running)),
-                check_collisions.run_if(in_state(GameState::Running)),
                 camera_follow_player.run_if(in_state(GameState::Running)),
                 update_mouse_position.run_if(in_state(GameState::Running)),
                 update_lifetime.run_if(in_state(GameState::Running)),
@@ -97,8 +87,7 @@ fn main() {
                 check_and_spawn_map.run_if(in_state(GameState::Running)),
                 handle_escape_pressed.run_if(in_state(GameState::Running).or_else(in_state(GameState::Paused))),
                 update_bigfoot.run_if(in_state(GameState::Running)),
-                
-                update_player_position.run_if(in_state(GameState::Running)),
+                //update_player_position.run_if(in_state(GameState::Running)),
                 update_bigfoot_position.run_if(in_state(GameState::Running)),
             ))
         .add_event::<CollisionEvent>()
