@@ -1,14 +1,15 @@
-use std::{f32::consts::PI, time::Duration};
+use std::f32::consts::PI;
 
-use bevy::{prelude::*, time::common_conditions::on_timer};
+use bevy::prelude::*;
 use rand::Rng;
 
 use crate::{components::{Collider, Enemy, GameState, Health, Player, Velocity}, EnemySpawnRate, GameTextures, ENEMY_SPEED, PLAYER_RADIUS, SPRITE_SCALE, SPRITE_SIZE};
+
 pub struct EnemyPlugin;
 
 impl Plugin for EnemyPlugin {
    fn build(&self, app: &mut App) {
-       app.add_systems(Update, enemy_spawn_system.run_if(on_timer(Duration::from_secs(1))).run_if(in_state(GameState::Running)))
+       app.add_systems(Update, enemy_spawn_system.run_if(in_state(GameState::Running)))
            .add_systems(FixedUpdate, (player_tracking_system, enemy_movement_system).run_if(in_state(GameState::Running)));
    } 
 }
@@ -33,7 +34,7 @@ fn enemy_spawn_system(
                     texture: game_textures.enemy.clone(),
                     transform: Transform {
                         translation: Vec3::new(x, y, 10.),
-                       scale: Vec3::new(SPRITE_SCALE/8.0, SPRITE_SCALE/8.0, 0.),
+                        scale: Vec3::new(SPRITE_SCALE/8.0, SPRITE_SCALE/8.0, 0.),
                         ..Default::default()
                     },
                     ..Default::default()
@@ -49,7 +50,7 @@ fn enemy_spawn_system(
                 },
         ));
         enemy_spawn_rate.0 -= 0.025;
-   }
+    }
 }
 
 
@@ -62,7 +63,8 @@ fn player_tracking_system(
             let direction_vector = (player_transform.translation - enemy_transform.translation).normalize();
             velocity.x = direction_vector.x;
             velocity.y = direction_vector.y;
-       }
+        }
+
     }
 }
 
@@ -71,9 +73,9 @@ fn enemy_movement_system(
     time: Res<Time>,
 ) {
     for (velocity, mut transform) in query.iter_mut() {
-       let translation = &mut transform.translation;
+        let translation = &mut transform.translation;
 
-       translation.x += velocity.x * time.delta_seconds() * ENEMY_SPEED;
-       translation.y += velocity.y * time.delta_seconds() * ENEMY_SPEED;
+        translation.x += velocity.x * time.delta_seconds() * ENEMY_SPEED;
+        translation.y += velocity.y * time.delta_seconds() * ENEMY_SPEED;
     }
 }

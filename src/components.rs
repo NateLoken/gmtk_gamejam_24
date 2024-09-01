@@ -1,6 +1,5 @@
 use bevy::{asset::Handle, ecs::entity::Entity, prelude::{Component, Resource, Timer, TimerMode, Vec2}, render::texture::Image, state::state::States, utils::HashSet};
-use std::{collections::HashMap, fmt};
-
+use std::{collections::HashMap, fmt, time::Duration};
 use crate::death_sound;
 
 // Common Components
@@ -47,6 +46,29 @@ pub struct Line;
 
 #[derive(Component)]
 pub struct Player;
+
+#[derive(Resource)]
+pub struct SpawnTimer {
+    pub timer: Timer,
+    pub interval_decrease: f32,
+}
+
+impl SpawnTimer {
+    pub fn new(initial_duration: Duration, interval_decrease: f32) -> Self {
+        Self {
+            timer: Timer::new(initial_duration, TimerMode::Repeating),
+            interval_decrease,
+        }
+    }
+
+    pub fn update(&mut self, delta: Duration) {
+        // Decrease the interval by the specified amount (2 milliseconds per second)
+        let decrease = self.interval_decrease * delta.as_secs_f32();
+        let new_duration = (self.timer.duration().as_secs_f32() - decrease).max(0.001); // Ensure the duration doesn't go below 1ms
+        self.timer.set_duration(Duration::from_secs_f32(new_duration));
+        self.timer.tick(delta);
+    }
+}
 
 #[derive(Component)]
 pub struct wallpaper;
@@ -173,6 +195,12 @@ impl Cooldowns {
         }
     }
 
+    pub fn reset_all(&mut self) {
+        for timer in self.cooldowns.values_mut() {
+            timer.reset();
+        }
+    }
+    
 }
 
 #[derive(Component)]
@@ -233,6 +261,10 @@ pub struct GameOverUI;
 #[derive(Component)]
 pub struct Resettable;
 
+#[derive(Component)]
+pub struct GameUI;
+
+
 #[derive(Resource)]
 pub struct Score {
     pub enemies_killed: u32,
@@ -271,7 +303,8 @@ pub enum GameState {
     Menu,
     Paused,
     Reset,
-    GameOver
+    GameOver,
+    Won
 }
 
 #[derive(Resource)]
@@ -284,8 +317,12 @@ pub struct PauseMenu;
 #[derive(Component, PartialEq)]
 pub struct StartButton;
 
+#[derive(Component, PartialEq)]
+pub struct RestartButton;
+
 #[derive(Component)]
 pub struct QuitButton;
+
 
 #[derive(Component)]
 pub struct MenuUI;

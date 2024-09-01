@@ -153,15 +153,17 @@ fn ability_system(
 
 fn ranged_attack(
     commands: &mut Commands,
-    query: Query<(Entity, &mut Transform), With<Player>>,
+    player_query: Query<(Entity, &mut Transform), With<Player>>,
     mouse_coords: Res<MouseCoords>,
     game_textures: Res<GameTextures>,
+
 ) {
-    if let Ok((_, transform)) = query.get_single() {
+    if let Ok((entity, transform)) = player_query.get_single() {
         let player_position = Vec2::new(transform.translation.x, transform.translation.y);
         let mouse_position = Vec2::new(mouse_coords.x, mouse_coords.y);
 
-        // Calculate direction from player to mouse
+
+        // Calculate the direction from the player to the mouse
         let direction = (mouse_position - player_position).normalize();
 
         // Set the desired line length
