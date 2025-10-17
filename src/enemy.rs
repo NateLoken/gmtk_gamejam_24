@@ -3,7 +3,10 @@ use std::f32::consts::PI;
 use bevy::prelude::*;
 use rand::Rng;
 
-use crate::{components::{Collider, Enemy, GameState, Health, Player, Velocity}, EnemySpawnRate, GameTextures, ENEMY_SPEED, PLAYER_RADIUS, SPRITE_SCALE, SPRITE_SIZE};
+use crate::{
+    components::{Collider, Enemy, GameState, Health, Player, Resettable, Velocity},
+    EnemySpawnRate, GameTextures, ENEMY_SPEED, PLAYER_RADIUS, SPRITE_SCALE, SPRITE_SIZE,
+};
 
 pub struct EnemyPlugin;
 
@@ -48,6 +51,7 @@ fn enemy_spawn_system(
                     x: 0.,
                     y: 0.,
                 },
+                Resettable,
         ));
         enemy_spawn_rate.0 -= 0.025;
     }

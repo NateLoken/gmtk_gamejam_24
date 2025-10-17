@@ -1,6 +1,24 @@
-use bevy::{asset::Handle, ecs::entity::Entity, prelude::{Component, Resource, Timer, TimerMode, Vec2}, render::texture::Image, state::state::States, utils::HashSet};
+use bevy::{
+    asset::Handle,
+    ecs::entity::Entity,
+    prelude::{Component, Resource, Timer, TimerMode, Vec2},
+    render::texture::Image,
+    state::state::States,
+    utils::HashSet,
+};
 use std::{collections::HashMap, fmt, time::Duration};
-use crate::death_sound;
+
+// Menu enum
+#[derive(Clone, Copy, Default, Eq, PartialEq, Debug, Hash, States)]
+pub enum GameState {
+    #[default]
+    Menu,
+    Running,
+    Paused,
+    Reset,
+    GameOver,
+    Won,
+}
 
 // Common Components
 #[derive(Component)]
@@ -71,7 +89,7 @@ impl SpawnTimer {
 }
 
 #[derive(Component)]
-pub struct wallpaper;
+pub struct Wallpaper;
 
 //#[derive(Component)]
 //pub struct Player {
@@ -264,6 +282,26 @@ pub struct Resettable;
 #[derive(Component)]
 pub struct GameUI;
 
+#[derive(Component)]
+pub struct MenuUI;
+
+#[derive(Component)]
+pub struct PauseMenu;
+
+#[derive(Component, PartialEq)]
+pub struct StartButton;
+
+#[derive(Component, PartialEq)]
+pub struct RestartButton;
+
+#[derive(Component)]
+pub struct QuitButton;
+
+#[derive(Component)]
+pub struct HealthText;
+
+#[derive(Component)]
+pub struct ScoreText;
 
 #[derive(Resource)]
 pub struct Score {
@@ -296,36 +334,8 @@ impl Score {
         self.enemies_killed
     }
 }
-#[derive(Clone, Copy, Default, Eq, PartialEq, Debug, Hash, States)]
-pub enum GameState {
-    #[default]
-    Running,
-    Menu,
-    Paused,
-    Reset,
-    GameOver,
-    Won
-}
-
-#[derive(Resource)]
-pub struct CurrentGameState {
-    pub(crate) state: GameState,
-}
-#[derive(Component)]
-pub struct PauseMenu;
-
-#[derive(Component, PartialEq)]
-pub struct StartButton;
-
-#[derive(Component, PartialEq)]
-pub struct RestartButton;
-
-#[derive(Component)]
-pub struct QuitButton;
 
 
-#[derive(Component)]
-pub struct MenuUI;
 
 #[derive(Component)]
 pub struct MovementSpeed(pub f32);
@@ -338,13 +348,6 @@ pub struct MousePosition {
 
 #[derive(Default, Resource)]
 pub struct Points(pub Vec<Vec2>);
-
-#[derive(Component)]
-pub struct HealthText;
-
-#[derive(Component)]
-pub struct ScoreText;
-
 
 #[derive(Component)]
 pub struct Invulnerability {

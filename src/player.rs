@@ -1,25 +1,40 @@
 use std::f32::consts::PI;
 
-use crate::{aoe_sound, dash_sound, play_empty_swing, ranged_sound, spawn_bigfoot, GameTextures, MouseCoords, BASE_SPEED, SPRITE_SCALE, SPRITE_SIZE};
-use crate::components::{Ability, Collider, Cooldowns, GameState, Health, Invulnerability, Lifetime, Line, Player, PointMarker, Points, Velocity}; 
+use crate::{
+    aoe_sound, dash_sound, play_empty_swing, ranged_sound, spawn_bigfoot, GameTextures, MouseCoords,
+    BASE_SPEED, SPRITE_SCALE, SPRITE_SIZE,
+};
+use crate::components::{
+    Ability, Collider, Cooldowns, GameState, Health, Invulnerability, Lifetime, Line, Player,
+    PointMarker, Points, Resettable, Velocity,
+};
 use bevy::prelude::*;
 
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostStartup, (player_spawn_system, spawn_bigfoot.after(player_spawn_system)))
-            .add_systems(FixedUpdate, (
-                    player_movement_system, 
-                    player_keyboard_event_system,
-                    ability_system,).run_if(in_state(GameState::Running)));
+        app.add_systems(
+            OnEnter(GameState::Running),
+            (player_spawn_system, spawn_bigfoot.after(player_spawn_system)),
+        )
+        .add_systems(
+            FixedUpdate,
+            (player_movement_system, player_keyboard_event_system, ability_system)
+                .run_if(in_state(GameState::Running)),
+        );
     }
 }
 
 pub fn player_spawn_system(
     mut commands: Commands,
     game_textures: Res<GameTextures>,
+    existing_player: Query<Entity, With<Player>>,
 ) {
+    if !existing_player.is_empty() {
+        return;
+    }
+
     commands.spawn((
             SpriteBundle {
                 texture: game_textures.player.clone(),
@@ -40,6 +55,7 @@ pub fn player_spawn_system(
                 x: 0.,
                 y: 0.,
             },
+            Resettable,
     ));
 }
 
@@ -158,7 +174,7 @@ fn ranged_attack(
     game_textures: Res<GameTextures>,
 
 ) {
-    if let Ok((entity, transform)) = player_query.get_single() {
+    if let Ok((_, transform)) = player_query.get_single() {
         let player_position = Vec2::new(transform.translation.x, transform.translation.y);
         let mouse_position = Vec2::new(mouse_coords.x, mouse_coords.y);
 
@@ -194,6 +210,7 @@ fn ranged_attack(
                 Lifetime {
                     timer: Timer::from_seconds(0.1, TimerMode::Once),
                 },
+                Resettable,
         ));
     }
 }
@@ -230,6 +247,7 @@ fn dash_attack(
                 Lifetime {
                     timer: Timer::from_seconds(0.1, TimerMode::Once),
                 },
+                Resettable,
         ));
         commands.entity(player_entity).insert(Invulnerability {
             timer: Timer::from_seconds(1.0, TimerMode::Once)
@@ -289,6 +307,7 @@ fn melee_attack(
                         Lifetime {
                             timer: Timer::from_seconds(0.1, TimerMode::Once),
                         },
+                        Resettable,
                 ));
             }
         }
@@ -338,6 +357,7 @@ fn aoe_attack(
                         Lifetime {
                             timer: Timer::from_seconds(0.1, TimerMode::Once),
                         },
+                        Resettable,
                 ));
             }
         }
