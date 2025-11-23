@@ -25,6 +25,11 @@ fn main() {
             ..default()
         }))
         .init_state::<GameState>()
+        .add_systems(Startup, setup)
         .add_plugins(GameMenu)
         .run();
+}
+
+fn setup(mut commands: Commands) {
+    commands.spawn(Camera2d);
 }
