@@ -5,8 +5,9 @@
 //      [] Attack (RMB, LMB, Dash, AOE)
 //  [x] Sound
 //      [x] Display a float with increment buttons on either side
+//  May Consider splitting this into a whole ahh module later it's getting a little large
 
-use bevy::{audio, color::palettes::css::RED, input_focus::InputFocus, prelude::*};
+use bevy::{color::palettes::css::RED, input_focus::InputFocus, prelude::*};
 
 use crate::GameState;
 
@@ -103,6 +104,7 @@ fn menu_action(
     mut text_query: Query<&mut Text, With<AudioText>>,
     mut app_exit_writer: MessageWriter<AppExit>,
     mut menu_state: ResMut<NextState<MenuState>>,
+    mut game_state: ResMut<NextState<GameState>>,
     mut audio_level: ResMut<AudioLevel>,
 ) {
     let mut update_volume = false;
@@ -114,6 +116,7 @@ fn menu_action(
                 }
                 MenuAction::Play => {
                     menu_state.set(MenuState::Disabled);
+                    game_state.set(GameState::Game);
                 }
                 MenuAction::Settings => menu_state.set(MenuState::Settings),
                 MenuAction::Controls => menu_state.set(MenuState::ControlSettings),
@@ -261,7 +264,8 @@ fn volume_menu_setup(mut commands: Commands, assets: Res<AssetServer>, volume: R
                         column_gap: px(20.),
                         ..Default::default()
                     },
-                    BackgroundColor(Color::BLACK),
+                    BorderRadius::all(px(15.)),
+                    BackgroundColor(NORMAL_BUTTON),
                     children![
                         button("<", &assets, MenuAction::VolDec),
                         (

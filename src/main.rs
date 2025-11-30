@@ -1,3 +1,4 @@
+mod core;
 mod menu;
 
 use menu::GameMenu;
@@ -27,6 +28,7 @@ fn main() {
         .init_state::<GameState>()
         .add_systems(Startup, setup)
         .add_plugins(GameMenu)
+        .add_plugins(core::GameSystems)
         .run();
 }
 
