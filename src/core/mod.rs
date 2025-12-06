@@ -1,9 +1,14 @@
-use bevy::{input::common_conditions::input_just_pressed, prelude::*};
+// TODO:
+// [] Animation Pipline
+//  []
+
+use bevy::prelude::*;
 use std::time::Duration;
 
 use crate::GameState;
 
 const SPRITE_SIZE: f32 = 32.0;
+const BASE_SPEED: f32 = 250.0;
 
 // Resources
 #[derive(Component)]
@@ -12,6 +17,20 @@ struct AnimationConfig {
     last_sprite_index: usize,
     fps: u8,
     frame_timer: Timer,
+}
+
+#[derive(Component)]
+struct MovementState {
+    is_moving: bool,
+    dir: Direction,
+}
+
+#[derive(Clone, Copy)]
+enum Direction {
+    UP,
+    DOWN,
+    LEFT,
+    RIGHT,
 }
 
 impl AnimationConfig {
@@ -25,7 +44,10 @@ impl AnimationConfig {
     }
 
     fn timer_from_fps(fps: u8) -> Timer {
-        Timer::new(Duration::from_secs_f32(1.0 / (fps as f32)), TimerMode::Once)
+        Timer::new(
+            Duration::from_secs_f32(1.0 / (fps as f32)),
+            TimerMode::Repeating,
+        )
     }
 }
 
@@ -33,10 +55,7 @@ impl AnimationConfig {
 struct Player;
 
 #[derive(Component)]
-struct Velocity {
-    x: f32,
-    y: f32,
-}
+struct Velocity(Vec2);
 
 // Setup
 pub struct GameSystems;
@@ -44,34 +63,82 @@ pub struct GameSystems;
 impl Plugin for GameSystems {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Game), spawn_player);
-        app.add_systems(Update, execute_animations);
         app.add_systems(
             Update,
-            trigger_animation::<Player>.run_if(input_just_pressed(KeyCode::ArrowLeft)),
+            (
+                keyboard_input_event_handler,
+                movement_system,
+                animation_system,
+            )
+                .chain()
+                .run_if(in_state(GameState::Game)),
         );
     }
 }
 
 // Systems
-fn trigger_animation<S: Component>(mut animation: Single<&mut AnimationConfig, With<S>>) {
-    animation.frame_timer = AnimationConfig::timer_from_fps(animation.fps);
+
+fn keyboard_input_event_handler(
+    keypress: Res<ButtonInput<KeyCode>>,
+    mut query: Query<(&mut Velocity, &mut MovementState), With<Player>>,
+) {
+    if let Ok((mut vel, mut state)) = query.single_mut() {
+        let mut v = Vec2::ZERO;
+        let mut dir = state.dir;
+
+        if keypress.pressed(KeyCode::KeyD) {
+            v.x = 1.0;
+            dir = Direction::RIGHT;
+        }
+        if keypress.pressed(KeyCode::KeyA) {
+            v.x = -1.0;
+            dir = Direction::LEFT;
+        }
+        if keypress.pressed(KeyCode::KeyW) {
+            v.y = 1.0;
+            dir = Direction::UP;
+        }
+        if keypress.pressed(KeyCode::KeyS) {
+            v.y = -1.0;
+            dir = Direction::DOWN;
+        }
+
+        state.is_moving = v.length_squared() > 0.0;
+        state.dir = dir;
+        vel.0 = v.normalize_or_zero();
+    }
 }
 
-fn execute_animations(
+fn movement_system(mut query: Query<(&Velocity, &mut Transform), With<Player>>, time: Res<Time>) {
+    if let Ok((vel, mut transform)) = query.single_mut() {
+        transform.translation.x += (vel.0.x * BASE_SPEED) * time.delta_secs();
+        transform.translation.y += (vel.0.y * BASE_SPEED) * time.delta_secs();
+    }
+}
+
+fn animation_system(
     time: Res<Time>,
-    mut sprite_query: Query<(&mut AnimationConfig, &mut Sprite)>,
+    mut query: Query<(&MovementState, &mut AnimationConfig, &mut Sprite), With<Player>>,
 ) {
-    for (mut config, mut sprite) in &mut sprite_query {
+    if let Ok((state, mut config, mut sprite)) = query.single_mut() {
+        if !state.is_moving {
+            if let Some(atlas) = &mut sprite.texture_atlas {
+                atlas.index = config.first_sprite_index;
+            }
+            config.frame_timer.pause();
+            return;
+        }
+
+        config.frame_timer.unpause();
         config.frame_timer.tick(time.delta());
 
-        if config.frame_timer.just_finished()
-            && let Some(atlas) = &mut sprite.texture_atlas
-        {
-            if atlas.index == config.last_sprite_index {
-                atlas.index = config.first_sprite_index;
-            } else {
-                atlas.index += 1;
-                config.frame_timer = AnimationConfig::timer_from_fps(config.fps);
+        if config.frame_timer.is_finished() {
+            if let Some(atlas) = &mut sprite.texture_atlas {
+                if atlas.index >= config.last_sprite_index {
+                    atlas.index = config.first_sprite_index;
+                } else {
+                    atlas.index += 1;
+                }
             }
         }
     }
@@ -85,7 +152,7 @@ fn spawn_player(
     let player_texture = asset_server.load("RUN/run_left.png");
 
     let layout = TextureAtlasLayout::from_grid(
-        UVec2::splat(32),
+        UVec2::splat(SPRITE_SIZE as u32),
         8,
         1,
         Some(uvec2(64, 0)),
@@ -107,6 +174,11 @@ fn spawn_player(
         },
         Transform::from_scale(Vec3::splat(7.0)),
         Player,
+        Velocity(Vec2::ZERO),
+        MovementState {
+            is_moving: false,
+            dir: Direction::LEFT,
+        },
         run_left,
     ));
 }
