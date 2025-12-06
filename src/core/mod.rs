@@ -11,6 +11,19 @@ const SPRITE_SIZE: f32 = 32.0;
 const BASE_SPEED: f32 = 250.0;
 
 // Resources
+
+#[derive(Resource)]
+struct PlayerTextures {
+    idle_up: Handle<Image>,
+    idle_right: Handle<Image>,
+    idle_left: Handle<Image>,
+    idle_down: Handle<Image>,
+    run_up: Handle<Image>,
+    run_right: Handle<Image>,
+    run_left: Handle<Image>,
+    run_down: Handle<Image>,
+}
+
 #[derive(Component)]
 struct AnimationConfig {
     first_sprite_index: usize,
@@ -27,10 +40,10 @@ struct MovementState {
 
 #[derive(Clone, Copy)]
 enum Direction {
-    UP,
-    DOWN,
-    LEFT,
-    RIGHT,
+    Up,
+    Left,
+    Right,
+    Down,
 }
 
 impl AnimationConfig {
@@ -77,30 +90,34 @@ impl Plugin for GameSystems {
 }
 
 // Systems
-
 fn keyboard_input_event_handler(
     keypress: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&mut Velocity, &mut MovementState), With<Player>>,
+    mut query: Query<(&mut Velocity, &mut MovementState, &mut Sprite), With<Player>>,
+    textures: Res<PlayerTextures>,
 ) {
-    if let Ok((mut vel, mut state)) = query.single_mut() {
+    if let Ok((mut vel, mut state, mut sprite)) = query.single_mut() {
         let mut v = Vec2::ZERO;
         let mut dir = state.dir;
 
         if keypress.pressed(KeyCode::KeyD) {
             v.x = 1.0;
-            dir = Direction::RIGHT;
+            dir = Direction::Right;
+            sprite.image = textures.run_right.clone();
         }
         if keypress.pressed(KeyCode::KeyA) {
             v.x = -1.0;
-            dir = Direction::LEFT;
+            dir = Direction::Left;
+            sprite.image = textures.run_left.clone();
         }
         if keypress.pressed(KeyCode::KeyW) {
             v.y = 1.0;
-            dir = Direction::UP;
+            dir = Direction::Up;
+            sprite.image = textures.run_up.clone();
         }
         if keypress.pressed(KeyCode::KeyS) {
             v.y = -1.0;
-            dir = Direction::DOWN;
+            dir = Direction::Down;
+            sprite.image = textures.run_down.clone();
         }
 
         state.is_moving = v.length_squared() > 0.0;
@@ -118,10 +135,18 @@ fn movement_system(mut query: Query<(&Velocity, &mut Transform), With<Player>>, 
 
 fn animation_system(
     time: Res<Time>,
+    textures: Res<PlayerTextures>,
     mut query: Query<(&MovementState, &mut AnimationConfig, &mut Sprite), With<Player>>,
 ) {
     if let Ok((state, mut config, mut sprite)) = query.single_mut() {
         if !state.is_moving {
+            match state.dir {
+                Direction::Left => sprite.image = textures.idle_left.clone(),
+                Direction::Right => sprite.image = textures.idle_right.clone(),
+                Direction::Up => sprite.image = textures.idle_up.clone(),
+                Direction::Down => sprite.image = textures.idle_down.clone(),
+            }
+
             if let Some(atlas) = &mut sprite.texture_atlas {
                 atlas.index = config.first_sprite_index;
             }
@@ -132,13 +157,13 @@ fn animation_system(
         config.frame_timer.unpause();
         config.frame_timer.tick(time.delta());
 
-        if config.frame_timer.is_finished() {
-            if let Some(atlas) = &mut sprite.texture_atlas {
-                if atlas.index >= config.last_sprite_index {
-                    atlas.index = config.first_sprite_index;
-                } else {
-                    atlas.index += 1;
-                }
+        if config.frame_timer.is_finished()
+            && let Some(atlas) = &mut sprite.texture_atlas
+        {
+            if atlas.index >= config.last_sprite_index {
+                atlas.index = config.first_sprite_index;
+            } else {
+                atlas.index += 1;
             }
         }
     }
@@ -149,7 +174,16 @@ fn spawn_player(
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
-    let player_texture = asset_server.load("RUN/run_left.png");
+    let player_textures = PlayerTextures {
+        idle_up: asset_server.load("IDLE/idle_up.png"),
+        idle_left: asset_server.load("IDLE/idle_left.png"),
+        idle_right: asset_server.load("IDLE/idle_right.png"),
+        idle_down: asset_server.load("IDLE/idle_down.png"),
+        run_up: asset_server.load("RUN/run_up.png"),
+        run_left: asset_server.load("RUN/run_left.png"),
+        run_right: asset_server.load("RUN/run_right.png"),
+        run_down: asset_server.load("RUN/run_down.png"),
+    };
 
     let layout = TextureAtlasLayout::from_grid(
         UVec2::splat(SPRITE_SIZE as u32),
@@ -160,14 +194,14 @@ fn spawn_player(
     );
     let texture_atlas_layout = texture_atlas_layouts.add(layout);
 
-    let run_left = AnimationConfig::new(0, 7, 24);
+    let animation_config = AnimationConfig::new(0, 7, 24);
 
     commands.spawn((
         Sprite {
-            image: player_texture.clone(),
+            image: player_textures.idle_down.clone(),
             texture_atlas: Some(TextureAtlas {
                 layout: texture_atlas_layout.clone(),
-                index: run_left.first_sprite_index,
+                index: animation_config.first_sprite_index,
             }),
             custom_size: Some(Vec2::splat(SPRITE_SIZE / 3.0)),
             ..Default::default()
@@ -177,8 +211,10 @@ fn spawn_player(
         Velocity(Vec2::ZERO),
         MovementState {
             is_moving: false,
-            dir: Direction::LEFT,
+            dir: Direction::Up,
         },
-        run_left,
+        animation_config,
     ));
+
+    commands.insert_resource(player_textures);
 }
