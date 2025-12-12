@@ -7,7 +7,7 @@
 
 [] Fix Code to be more plugin-centric
 [x] Menu Plugin
-[] Player Plugin
+[x] Player Plugin
 [] Enemy Plugin
 [] Collision Plugin
 [] Map Plugin
