@@ -2,6 +2,7 @@
 // [] Animation Pipline
 //  []
 
+mod collision;
 mod player;
 
 use bevy::prelude::*;
@@ -9,6 +10,7 @@ use std::time::Duration;
 
 use crate::{
     GameState,
+    core::collision::CollisionSystem,
     core::player::{MovementState, Player, PlayerSystem, PlayerTextures},
 };
 
@@ -54,6 +56,7 @@ pub struct GameSystems;
 impl Plugin for GameSystems {
     fn build(&self, app: &mut App) {
         app.add_plugins(PlayerSystem);
+        //app.add_plugins(CollisionSystem);
         app.add_systems(
             Update,
             (animation_system,).run_if(in_state(GameState::Game)),

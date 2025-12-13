@@ -46,7 +46,7 @@ impl Plugin for PlayerSystem {
         app.add_systems(OnEnter(GameState::Game), spawn_player);
         app.add_systems(
             Update,
-            (keyboard_input_event_handler, movement_system)
+            (keyboard_input_event_handler, movement_system, camera_update)
                 .chain()
                 .run_if(in_state(GameState::Game)),
         );
@@ -54,7 +54,8 @@ impl Plugin for PlayerSystem {
 }
 
 // Systems
-pub fn keyboard_input_event_handler(
+
+fn keyboard_input_event_handler(
     keypress: Res<ButtonInput<KeyCode>>,
     mut query: Query<(&mut Velocity, &mut MovementState, &mut Sprite), With<Player>>,
     textures: Res<PlayerTextures>,
@@ -101,17 +102,26 @@ pub fn keyboard_input_event_handler(
     }
 }
 
-pub fn movement_system(
-    mut query: Query<(&Velocity, &mut Transform), With<Player>>,
-    time: Res<Time>,
-) {
+fn movement_system(mut query: Query<(&Velocity, &mut Transform), With<Player>>, time: Res<Time>) {
     if let Ok((vel, mut transform)) = query.single_mut() {
         transform.translation.x += (vel.0.x * BASE_SPEED) * time.delta_secs();
         transform.translation.y += (vel.0.y * BASE_SPEED) * time.delta_secs();
     }
 }
 
-pub fn spawn_player(
+fn camera_update(
+    mut camera_query: Query<&mut Transform, (With<Camera2d>, Without<Player>)>,
+    player_query: Query<&Transform, With<Player>>,
+) {
+    if let Ok(mut camera) = camera_query.single_mut()
+        && let Ok(player_transform) = player_query.single()
+    {
+        camera.translation.x = player_transform.translation.x;
+        camera.translation.y = player_transform.translation.y;
+    }
+}
+
+fn spawn_player(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
