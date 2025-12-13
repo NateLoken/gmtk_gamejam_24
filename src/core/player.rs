@@ -57,10 +57,18 @@ impl Plugin for PlayerSystem {
 
 fn keyboard_input_event_handler(
     keypress: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&mut Velocity, &mut MovementState, &mut Sprite), With<Player>>,
+    mut query: Query<
+        (
+            &mut AnimationConfig,
+            &mut Velocity,
+            &mut MovementState,
+            &mut Sprite,
+        ),
+        With<Player>,
+    >,
     textures: Res<PlayerTextures>,
 ) {
-    if let Ok((mut vel, mut state, mut sprite)) = query.single_mut() {
+    if let Ok((mut anim_config, mut vel, mut state, mut sprite)) = query.single_mut() {
         let mut v = Vec2::ZERO;
         let mut dir = state.dir;
 
@@ -93,6 +101,12 @@ fn keyboard_input_event_handler(
                     Direction::Right => sprite.image = textures.attack_right.clone(),
                 }
                 state.is_attacking = true;
+
+                if let Some(atlas) = &mut sprite.texture_atlas {
+                    atlas.index = anim_config.first_sprite_index;
+                }
+
+                anim_config.frame_timer.reset();
             }
         }
 
